@@ -7,28 +7,97 @@
 </head>
 <body>
 <div class="container">
-    <button class="row col-xs-4 btn btn-default assets" type='submit'">Get Assets</button>
-    <button class="row col-xs-12 btn btn-default issue" type='submit'">Issue Asset</button>
-    <button class="row col-xs-12 btn btn-default send" type='submit'">Send Asset</button>
+    <div class="row col-xs-12">
+        <form id="assets" action="assets" method="get">
+            <button class="row col-xs-4 btn btn-default assets" type='submit'>Get Assets
+            </button>
+        </form>
+    </div>
 
-    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
-    <script>
-        var socket = io.connect();
-        $('.assets').click(function(){
-            console.log('/assets client');
-            socket.emit('/assets');
-        });
-        $('.issue').click(function(){
-            console.log('/issue client');
-            socket.emit('/issue');
-        });
-        $('.send').click(function(){
-            console.log('/send client');
-            socket.emit('/send');
-        });
-    </script>
+    <form id="issue" name="issue" action="issue" method="put">
+        <div class="row">
+            <button class="col-xs-12" type='submit'>Issue Asset</button>
+        </div>
+    </form>
+
+
+    <form id="send" action="send" method="post">
+        toAddress: <input type="text" name="toAddress" class="toAddress row col-xs-12">
+        assetId:<input type="text" name="assetId" class="assetId row col-xs-12">
+        amount:<input type="number" name="amount" class="amount row col-xs-12">
+        <div class="row">
+            <button class="col-xs-12" type='submit'>Send Asset</button>
+        </div>
+    </form>
+
+    <form id="encode" action="encode" method="post">
+        number: <input type="number" name="encode" class="encode row col-xs-12">
+        <div class="row">
+            <button class="col-xs-12" type='submit'>Encode</button>
+        </div>
+    </form>
+
+
 </div>
 
+<script>
+    $('#assets').on('submit', function (e) {
+        e.preventDefault();
+        $.ajax({
+            type: 'get',
+            url: '/assets',
+            contentType: 'application/json',
+            success: function () {
+                console.log('success assets')
+            }
+        })
+    })
+
+    $('#issue').on('submit', function (e) {
+        e.preventDefault();
+        var data = [{assetName: 'achi' + Math.random() * 3000, amount: '100'}];
+        console.log(JSON.stringify(data));
+        $.ajax({
+            type: 'put',
+            url: '/issue',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function () {
+                console.log('success issue')
+            }
+        });
+    });
+
+    $('#send').on('submit', function (e) {
+        e.preventDefault();
+        var data = {toAddress: $('.toAddress').val(), assetId: $('.assetId').val(), amount: $('.amount').val()};
+        console.log(JSON.stringify(data));
+        $.ajax({
+            type: 'post',
+            url: '/send',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function () {
+                console.log('success send')
+            }
+        })
+    })
+
+    $('#encode').on('submit', function (e) {
+        e.preventDefault();
+        var data = {number: $('.encode').val()};
+        console.log(data);
+        $.ajax({
+            type: 'post',
+            url: '/encode',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function () {
+                console.log('success encode')
+            }
+        })
+    })
+</script>
 
 </body>
 </html>
