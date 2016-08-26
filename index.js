@@ -6,6 +6,7 @@ var Colu = require('colu'),
     Handlebars = require('handlebars'),
     bodyParser = require('body-parser'),
     request = require('request'),
+    async = require('async'),
     util = require('./util/util.js');
 
 var app = express();
@@ -18,6 +19,8 @@ var settings = {
 };
 var colu = new Colu(settings);
 colu.init();
+
+
 colu.on('connect', function () {
     app.use(bodyParser.json())
     app.use(bodyParser.urlencoded({extended: true}));
@@ -25,49 +28,119 @@ colu.on('connect', function () {
         var html = Handlebars.compile(fs.readFileSync('./index.html', 'utf8'))();
         res.send(html);
     });
-    var sendResponseToClient = function (res, status, response) {   
+
+    var sendResponseToClient = function (res, status, response) {
         res.status(status).send(response);
-    }
+    };
+    var sendErrorToClient = function (err, res) {
+        if (err.code) {
+            sendResponseToClient(res, err.code, err);
+        }
+        else {
+            sendResponseToClient(res, 500, err);
+        }
+    };
     app.get('/assets', function (req, res) {
-        colu.getAssets(function () {// case of success
-            var response = [];
-            arguments[1] && arguments[1].forEach(function (asset) {
-                response.push(asset.assetId);
-                console.log('address: ',asset.address, ' assetId: ', asset.assetId);
-                console.log(asset);
-            })
-            sendResponseToClient(res, 200, response);
+        colu.getAssets(function (err, assets) {// case of success
+            if (err) {
+                sendErrorToClient(err, res);
+            }
+            else {
+                var response = [];
+                assets && assets.forEach(function (asset) {
+                    response.push(asset.assetId);
+                });
+                sendResponseToClient(res, 200, response);
+            }
         })
     });
     app.put('/issue', function (req, res) {// this function assumes that client sends content-type 'application/json'
-        var assets = req.body;
-        var response = [];
-        assets && assets.forEach(function (asset) {
-            colu.issueAsset(asset, function () {
-                if (arguments[0] && !arguments[0].code) {// case of err without code
-                    sendResponseToClient(res, 400, arguments[0])
+        var inputAssets = req.body;
+        var assetsIds = [];
+        var errors = [];
+        inputAssets.forEach(function (asset) {//doesn't maintain order of insertion, only solution to this so far is making it synchronous - not good
+            assetToIssue = {
+                amount: asset.amount,
+                metadata: {
+                    assetName: asset.assetName
                 }
-                else if (arguments[0] && arguments[0].code != 200) {//case of other status
-                    sendResponseToClient(res, arguments[0].code, arguments[0])
+            }
+            colu.issueAsset(assetToIssue, function (err, assetObject) {
+                if (err) {
+                    //sendErrorToClient(err, res);
+                    errors.push(err);
                 }
-                else {//case of success
-                    response.push(arguments[1].assetId);
-                    if (response.length === assets.length) {
-                        //socket.emit('/issue', response);
-                        sendResponseToClient(res, 200, response);
+                else {
+                    assetsIds.push(assetObject.assetId);
+                    if (assetsIds.length + errors.length === inputAssets.length) {
+                        var assetNamesAndIds = []
+                        assetsIds.forEach(function(assetId){
+                            var getAssetDataErrors = 0;
+                            colu.coloredCoins.getAssetData({assetId: assetId}, function(err, assetData){// this is to maitain the order
+                                if(err){
+                                    getAssetDataErrors++;
+                                    errors.push(err)
+                                }
+                                else{
+                                    assetNamesAndIds.push({assetId: assetData.assetId, assetName: assetData.assetData[0].metadata.metadataOfIssuence.data.assetName});
+                                    if(assetNamesAndIds.length + getAssetDataErrors === assetsIds.length){
+                                        console.log(assetNamesAndIds)
+                                        var response = [];
+                                        inputAssets.forEach(function(asset){
+                                            assetNamesAndIds.forEach(function(assetNameAndId){//change to object??
+                                                if(asset.assetName === assetNameAndId.assetName){
+                                                    response.push(asset.assetName);
+                                                }
+                                            });
+                                        });
+                                        console.log(response);
+                                        
+                                    }
+                                }
+                            })
+                        })
+
                     }
                 }
             })
-        });
+        })
     });
+// function issueAsset(index) {
+//     colu.issueAsset(assets[index], function (err, assetObject) {
+//         if (err) {
+//             errs.push(err);
+//         }
+//         else {
+//             console.log(assetObject)
+//             response.push(assetObject.assetId);
+//         }
+//         if(index === assets.length-1){
+//             if(errs.length > 0){
+//                 console.log(errs)
+//                 sendErrorToClient(errs, res);
+//             }
+//             else {
+//                 sendResponseToClient(res, 200, response);
+//             }
+//         }
+//         else {
+//             index++;
+//             issueAsset(index);
+//         }
+//     });
+// }
 
     app.post('/send', function (req, res) {
-        console.log(req.body);
-        var from = [];
-        colu.getAssets(function () {// case of success
-            arguments[1] && arguments[1].forEach(function (asset) {
-                from.push(asset.address);
-            });
+        colu.getAssets(function (err, assets) {
+            var from = [];
+            if (err) {
+                sendErrorToClient(err, sendResponseToClient, res);
+            }
+            else {
+                assets && assets.forEach(function (asset) {
+                    from.push(asset.address);
+                });
+            }
             var to = [
                 {
                     address: req.body.toAddress,
@@ -75,23 +148,22 @@ colu.on('connect', function () {
                     amount: req.body.amount
                 }
             ];
-            colu.sendAsset({
-                from: [from[0]],
-                to: to
-            }, function(){
-                if(arguments[0]){//case of error
-                    sendResponseToClient(res, 400, arguments[0])
+            var args = {from: from, to: to};
+            colu.sendAsset(args, function (err, financeTxid) {
+                if (err) {
+                    sendErrorToClient(err, res);
                 }
                 else {
-                    sendResponseToClient(res, 200, arguments[1].financeTxid);
+                    sendResponseToClient(res, 200, financeTxid);
                 }
             })
         });
     });
 
-    app.post('/encode', function(req,res){
+
+    app.post('/encode', function (req, res) {
         var number = parseInt(req.body.number);
-        if(number >= 0 && number <=10000000000000000){
+        if (number >= 0 && number <= 10000000000000000) {
             var encodedNumber = util.encode.encodeNumber(number);
             sendResponseToClient(res, 200, encodedNumber);
         }
@@ -106,7 +178,8 @@ colu.on('connect', function () {
         console.log('listening on ' + port);
     });
 
-});
+})
+;
 
 // io.on('connection', function (socket) {
 //     socket.on('/assets', function () {

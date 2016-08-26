@@ -7,14 +7,16 @@
 </head>
 <body>
 <div class="container">
-    <div class="row col-xs-12">
+    <div class="">
+        Get Assets:
         <form id="assets" action="assets" method="get">
-            <button class="row col-xs-4 btn btn-default assets" type='submit'>Get Assets
+            <button class="row col-xs-12 btn btn-default assets" type='submit'>Get Assets
             </button>
         </form>
     </div>
 
     <form id="issue" name="issue" action="issue" method="put">
+        Issue Asset
         <div class="row">
             <button class="col-xs-12" type='submit'>Issue Asset</button>
         </div>
@@ -55,7 +57,12 @@
 
     $('#issue').on('submit', function (e) {
         e.preventDefault();
-        var data = [{assetName: 'achi' + Math.random() * 3000, amount: '100'}];
+        var data = [
+            {assetName: 'achi01'  , amount: 100},
+            {assetName: 'achi02'  , amount: 200},
+            {assetName: 'achi03' , amount: 300},
+            {assetName: 'achi04' , amount: 400}
+        ];
         console.log(JSON.stringify(data));
         $.ajax({
             type: 'put',
