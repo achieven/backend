@@ -18,7 +18,7 @@
     <form id="issue" name="issue" action="issue" method="put">
         Issue Asset
         <div class="row">
-            <button class="col-xs-12" type='submit'>Issue Asset</button>
+            <button class="col-xs-12" type='submit'>Issue Assets</button>
         </div>
     </form>
 
@@ -57,17 +57,12 @@
 
     $('#issue').on('submit', function (e) {
         e.preventDefault();
-        var data = [
-            {assetName: 'achi01'  , amount: 100},
-            {assetName: 'achi02'  , amount: 200},
-            {assetName: 'achi03' , amount: 300},
-            {assetName: 'achi04' , amount: 400}
-        ];
+        var data = [{assetName: 'achi1', amount: Math.pow(2,54)-2}];
         console.log(JSON.stringify(data));
         $.ajax({
             type: 'put',
             url: '/issue',
-            data: JSON.stringify(data),
+            data: JSON.stringify({assets: data}),
             contentType: 'application/json',
             success: function () {
                 console.log('success issue')
@@ -77,7 +72,7 @@
 
     $('#send').on('submit', function (e) {
         e.preventDefault();
-        var data = {toAddress: $('.toAddress').val(), assetId: $('.assetId').val(), amount: $('.amount').val()};
+        var data = {toAddress: $('.toAddress').val(), assetId: $('.assetId').val(), amount: Math.pow(2,53)};
         console.log(JSON.stringify(data));
         $.ajax({
             type: 'post',
