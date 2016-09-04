@@ -1,5 +1,6 @@
 var validationErrorMessage = 'Validation error';
 var validationErrorCode = 400
+var integerRegex = /^\+?(0|[1-9]\d*)$/
 var statuses = require('body-parser/node_modules/http-errors/node_modules/statuses/codes.json')
 var pubsub = require('pubsub-js')
 var async = require('async')
@@ -42,15 +43,7 @@ var Util = {
                         explanation: 'input assets at ' + index + ', amount is not specified'
                     }
                 }
-                else if (!Number.isInteger(asset.amount) && !Number.isInteger(parseFloat(asset.amount))) {
-                    errorCode = validationErrorCode
-                    errorResponse = {
-                        code: validationErrorCode,
-                        message: validationErrorMessage,
-                        explanation: 'input assets at ' + index + ', amount should be an integer'
-                    }
-                }
-                else if (asset.amount < 0 || asset.amount >= Math.pow(2, 54) - 1) {
+                else if (!integerRegex.test(asset.amount) || parseInt(asset.amount) >= Math.pow(2, 54) - 1 || parseInt(asset.amount) <= 0) {
                     errorCode = validationErrorCode
                     errorResponse = {
                         code: validationErrorCode,
@@ -74,18 +67,107 @@ var Util = {
                 inputAssetsReadyForAction: inputAssetsReadyForAction
             };
         },
-        getAssets: function (colu, sendResponse) {
-            var self = this;
-            colu.getAssets(function (err, assets) {// case of success
-                if (err) return sendResponse({code: err.code || 500, response: err})
-                else {
-                    var assetsIds = [];
-                    assets && assets.forEach(function (asset) {
-                        assetsIds.push(asset.assetId);
-                    });
-                    return sendResponse({code: 200, response: assetsIds});
+        validateSendAsset: function (body) {
+            var errorCode
+            var errorResponse
+            for (var key in body) {
+                if (errorCode) break
+                var value = body[key]
+                switch (key) {
+                    case 'toAddress':
+                        if (!(typeof  value === 'string')) {
+                            errorCode = validationErrorCode
+                            errorResponse = {
+                                code: validationErrorCode,
+                                message: validationErrorMessage,
+                                explanation: key + ' is not a string'
+                            }
+                        }
+                        else if (value.length === 0) {
+                            errorCode = validationErrorCode
+                            errorResponse = {
+                                code: validationErrorCode,
+                                message: validationErrorMessage,
+                                explanation: key + ' has length of 0'
+                            }
+                        }
+                        else if (value.indexOf(' ') >= 0) {
+                            errorCode = validationErrorCode
+                            errorResponse = {
+                                code: validationErrorCode,
+                                message: validationErrorMessage,
+                                explanation: key + ' has spaces in it, cannot be a valid address'
+                            }
+                        }
+                        break
+                    case 'assetId':
+                        if (!(typeof  value === 'string')) {
+                            errorCode = validationErrorCode
+                            errorResponse = {
+                                code: validationErrorCode,
+                                message: validationErrorMessage,
+                                explanation: key + ' is not a string'
+                            }
+                        }
+                        else if (value.length === 0) {
+                            errorCode = validationErrorCode
+                            errorResponse = {
+                                code: validationErrorCode,
+                                message: validationErrorMessage,
+                                explanation: key + ' has length of 0'
+                            }
+                        }
+                        else if (value.indexOf(' ') >= 0) {
+                            errorCode = validationErrorCode
+                            errorResponse = {
+                                code: validationErrorCode,
+                                message: validationErrorMessage,
+                                explanation: key + ' has spaces in it, cannot be a valid assetId'
+                            }
+                        }
+                        break
+                    case 'amount':
+                        if (!integerRegex.test(value) || parseInt(value) >= Math.pow(2, 54) - 1 || parseInt(value) <= 0) {
+                            errorCode = validationErrorCode
+                            errorResponse = {
+                                code: validationErrorCode,
+                                message: validationErrorMessage,
+                                explanation: key + ' should be an integer between 1 and (2^54)-2'
+                            }
+                        }
+                        break
+                    default:
+                        break
                 }
-            });
+            }
+            return {errorCode: errorCode, errorResponse: errorResponse};
+        },
+        returnResponse: function(err, results, sendResponse){
+            if (err) return sendResponse( {code: err.code in statuses ? err.code : 500, response: err})
+            return sendResponse({code: 200, response: results})
+        },
+        getAssets: function (colu, sendResponse) {
+            var self = this
+            async.waterfall(
+                [
+                    function (callback) {
+                        colu.getAssets(function (err, assets) {// case of success
+                            if (err) return callback({code: err.code in statuses ? err.code : 500, response: err})
+                            var assetsIds = [];
+                            assets && assets.forEach(function (asset) {
+                                assetsIds.push(asset.assetId);
+                            });
+                            return callback(null, assetsIds);
+
+                        });
+                    }
+                ],
+                function(err, results){
+                    return self.returnResponse(err, results, sendResponse)
+                }
+                
+            )
+
         },
         issueAssets: function (colu, inputAssets, sendResponse) {
             var response = this.validateIssueAssets(inputAssets);
@@ -93,15 +175,16 @@ var Util = {
             var errorResponse = response.errorResponse;
             var inputAssetsReadyForAction = response.inputAssetsReadyForAction;
             if (errorCode) return sendResponse({code: errorCode, response: errorResponse})
-
+            console.log(inputAssetsReadyForAction)
             var allFunctions = []
             inputAssetsReadyForAction.forEach(function (assetToIssue) {
                 var issueAndGetAssetMetadata = function (callback) {
                     colu.issueAsset(assetToIssue, function (err, assetObject) {
-                        console.log('$$$',assetObject)
+                        console.log('$$$', assetObject)
                         if (err) return callback(err)
                         colu.coloredCoins.getAssetMetadata(assetObject.assetId, assetObject.txid + ':0', function (err, assetData) {
                             if (err) return callback(err)
+                            console.log('%%%', assetData)
                             var assetName = assetData.metadataOfIssuence.data.assetName
                             var assetId = assetData.assetId
                             //console.log(assetName, assetId)
@@ -133,106 +216,100 @@ var Util = {
             )
         },
         sendAsset: function (colu, body, sendResponse) {
-            for (var key in body) {
-                var value = body[key]
-                switch (key) {
-                    case 'toAddress':
-                        if (!(typeof  value === 'string')) {
-                            return sendResponse({
-                                code: validationErrorCode,
-                                response: {
-                                    code: validationErrorCode,
-                                    message: validationErrorMessage,
-                                    explanation: key + ' is not a string'
-                                }
-                            })
-                        }
-
-                        break
-                    case 'assetId':
-                        if (!(typeof  value === 'string')) {
-                            return sendResponse({
-                                code: validationErrorCode,
-                                response: {
-                                    code: validationErrorCode,
-                                    message: validationErrorMessage,
-                                    explanation: key + ' is not a string'
-                                }
-                            })
-                        }
-
-                        break
-                    case 'amount':
-                        if (!Number.isInteger(value) && !Number.isInteger(parseFloat(value))) {
-                            return sendResponse({
-                                code: validationErrorCode,
-                                response: {
-                                    code: validationErrorCode,
-                                    message: validationErrorMessage,
-                                    explanation: key + ' should be an integer'
-                                }
-                            })
-                        }
-                        break
-                    default:
-                        break
-                }
-            }
+            var self = this
+            var errorCodeAndResponse = this.validateSendAsset(body);
+            var errorCode = errorCodeAndResponse.errorCode;
+            var errorResponse = errorCodeAndResponse.errorResponse;
+            if (errorCode) return sendResponse({code: errorCode, response: errorResponse})
 
             async.waterfall(
                 [
                     function (callback) {
+                        var localWalletAddresses = new Set()
                         colu.getAssets(function (err, assets) {
+                            // if (!Array.isArray(inputAssets) || inputAssets.length === 0 ) {
+                            //     return callback({
+                            //         code: 500,
+                            //         response: 'Should have from as array of addresses or sendutxo as array of utxos.'
+                            //     })
+                            // }
+                            if (err) return callback(err)
+                            assets.forEach(function (asset) {
+                                localWalletAddresses.add(asset.address)
+                            })
+                            callback(null, localWalletAddresses)
+                        })
+                    },
+                    function (localWalletAddresses, callback) {
+                        colu.coloredCoins.getStakeHolders(body.assetId, function (err, assetHolders) {
+                            //console.log('###',assetHolders)
                             var assetsIdsAndAmounts = []
                             var from = [];
-                            if (err) {
-                                return callback(err)
-                            }
+                            if (err) return callback(err)
                             else {
-                                if (!assets || assets.length === 0) {
-                                    return callback({
-                                        code: 500,
-                                        response: 'Should have from as array of addresses or sendutxo as array of utxos.'
-                                    })
-                                }
-                                assets && assets.forEach(function (asset) {
-                                    from.push(asset.address);
-                                    var assetIdAndAmount = {}
-                                    assetIdAndAmount[asset.assetId] = asset.amount
-                                    assetsIdsAndAmounts.push(assetIdAndAmount)
-                                    if (body.assetId === asset.assetId && body.amount > asset.amount) {
-                                        return callback({
-                                            code: 500, response: {
-                                                code: 20004,
-                                                status: 500,
-                                                name: 'NotEnoughAssetsError',
-                                                message: 'Not enough assets to cover transfer transaction',
-                                                asset: asset.assetId
-                                            }
-                                        })
+                                // if (!assetHolders || assetHolders.length === 0) {
+                                //     return callback({
+                                //         code: 500,
+                                //         response: 'Should have from as array of addresses or sendutxo as array of utxos.'
+                                //     })
+                                // }
+                                var sumAllAmountsOfAssetInWallet = 0
+                                assetHolders.holders.forEach(function (assetHolder) {
+                                    if (localWalletAddresses.has(assetHolder.address)) {
+                                        sumAllAmountsOfAssetInWallet += assetHolder.amount
+                                        from.push(assetHolder.address)
                                     }
                                 })
-
+                                // if (sumAllAmountsOfAssetInWallet < body.amount) {
+                                //     return callback({
+                                //         code: 500, response: {
+                                //             code: 20004,
+                                //             status: 500,
+                                //             name: 'NotEnoughAssetsError',
+                                //             message: 'Not enough assets to cover transfer transaction',
+                                //             asset: body.assetId
+                                //         }
+                                //     })
+                                // }
                                 callback(null, from)
                             }
-                        });
+                        })
+                    },
+                    function (from, callback) {
+                        colu.coloredCoins.getAddressInfo(body.toAddress, function (err, addressInfo) {
+                            //console.log(err, addressInfo)
+                            if (err) return callback(err)
+                            if (!Array.isArray(addressInfo.utxos) || addressInfo.utxos.length === 0)
+                                return callback({code: 500, response: 'toAddress does not exist'})
+                            callback(null, from)
+                        })
                     },
                     function (from, callback) {
                         var to = [{address: body.toAddress, assetId: body.assetId, amount: body.amount}]
                         var args = {from: from, to: to};
                         colu.sendAsset(args, function (err, sentAsset) {
-                            if (err) {
-                                return callback(err)
-                            }
-                            console.log('!!!',sentAsset.txid)
-                            console.log('@@@',sentAsset.financeTxid)
-                            return callback(null, sentAsset.financeTxid)
+                            if (err) return callback(err)
+                            //test:
+                            colu.getAssets(function (err, assets) {
+                                console.log('asset in wallet: ')
+                                assets.forEach(function (asset) {
+                                    console.log(asset.address, asset.amount, asset.assetId)
+                                })
+                                colu.coloredCoins.getStakeHolders(body.assetId, function (err, assetHolders) {
+                                    console.log('asset everywhere: ')
+                                    assetHolders.holders.forEach(function (assetHolder) {
+                                        console.log(assetHolder.address, assetHolder.amount)
+                                    })
+                                })
+                            })
+                            return callback(null, sentAsset.financeTxid)//or txid, need to see what;s the difference!
                         })
                     }
-                ], function (err, financeTxid) {
+                ], function (err, results) {
+                    return self.returnResponse(err, results, sendResponse)
                     //console.log(err, financeTxid)
-                    if (err) return sendResponse({code: err.code in statuses ? err.code : 500, response: err})
-                    sendResponse({code: 200, response: financeTxid})
+                    // if (err) return sendResponse({code: err.code in statuses ? err.code : 500, response: err})
+                    // sendResponse({code: 200, response: results})
 
                 }
             )
@@ -290,7 +367,7 @@ var Util = {
             }
             else {
                 var significantDigits = mantisDecimal.toString().length;
-                while (!this.signMantisExponentTable[significantDigits]) {
+                while (!this.signMantisExponentTable[significantDigits] && significantDigits <=17) {
                     significantDigits++;
                 }
                 return significantDigits.toString();
@@ -319,6 +396,7 @@ var Util = {
         encodeFullNumber: function (number) {
             var mantisAndExponentDecimal = this.calculateMantisExponentDecimal(number);
             var mantisDecimal = mantisAndExponentDecimal.mantisDecimal;
+           
             var exponentDecimal = mantisAndExponentDecimal.exponentDecimal;
 
             var mantisBinaryWithoutZeros = mantisDecimal.toString(2);
@@ -336,19 +414,19 @@ var Util = {
             return fullHexRepresentation
         },
         encodeNumber: function (number, sendResponse) {
-            if (!Number.isInteger(number)) {
+            if (!integerRegex.test(number) || parseInt(number) > Number.MAX_SAFE_INTEGER) {
                 return sendResponse({
                     code: validationErrorCode,
                     response: {
                         code: validationErrorCode,
                         message: validationErrorMessage,
-                        explanation: 'number should be an integer'
+                        explanation: 'number should be an integer between 0 and (2^53)-1 (Number.MAX_SAFE_INTEGER)'
                     }
                 })
             }
-            var fullHexRepresentation = this.encodeFullNumber(number)
-            return sendResponse({code: 200, response: fullHexRepresentation})
-            //return fullHexRepresentation;
+            var response = this.encodeFullNumber(parseInt(number))
+            if(response.code) return sendResponse(response)
+            return sendResponse({code: 200, response: response})
         },
     }
 }

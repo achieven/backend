@@ -1,5 +1,6 @@
 /* eslint-env mocha */
 var validationErrorMessage = 'Validation error';
+var validationErrorCode = 400
 var Colu = require('colu')
 var testUtils = require('colu/test/test-utils.js')
 var expect = require('chai').expect
@@ -140,7 +141,7 @@ describe('Test utilColuFunctions', function () {
                 done()
             })
         })
-        it('should return an error 400 saying "input assets at <index>,  amount should be an integer" when amount is not an integer or a string that represents an integer', function (done) {
+        it('should return an error 400 saying "input assets at <index>,  amount should be an integer between 1 and (2^54)-2" when amount is not an integer or a string that represents an integer', function (done) {
             this.timeout(20000)
             utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: 1.2}], function (statusAndResponse) {
                 expect(statusAndResponse).to.be.a('object');
@@ -148,28 +149,8 @@ describe('Test utilColuFunctions', function () {
                 expect(statusAndResponse.response).to.be.a('object');
                 expect(statusAndResponse.response.code).to.be.equal(400);
                 expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer')
-                utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: "1.2"}], function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(400);
-                    expect(statusAndResponse.response).to.be.a('object');
-                    expect(statusAndResponse.response.code).to.be.equal(400);
-                    expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                    expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer')
-                    done()
-                })
-            })
-        })
-        it('should return an error 400 saying "input assets at <index>,  amount should be an integer between 1 and (2^54)-2" when amount is not between 1 and (2^54)-2', function (done) {
-            this.timeout(20000)
-            utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: -1}], function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                expect(statusAndResponse.response.code).to.be.equal(400);
-                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
                 expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer between 1 and (2^54)-2')
-                utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: Math.pow(2, 54)-1}], function (statusAndResponse) {
+                utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: "1.2"}], function (statusAndResponse) {
                     expect(statusAndResponse).to.be.a('object');
                     expect(statusAndResponse.code).to.be.equal(400);
                     expect(statusAndResponse.response).to.be.a('object');
@@ -180,9 +161,29 @@ describe('Test utilColuFunctions', function () {
                 })
             })
         })
-        it('should return success when amount is an integer between 1 and (2^54)-2', function(done){
+        it('should return an error 400 saying "input assets at <index>,  amount should be an integer between 1 and (2^54)-2" when amount is not between 1 and (2^54)-2', function (done) {
             this.timeout(20000)
-            var inputAssets = [{assetName: 'a', amount: Math.pow(2,54)-2}]
+            utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: 0}], function (statusAndResponse) {
+                expect(statusAndResponse).to.be.a('object');
+                expect(statusAndResponse.code).to.be.equal(400);
+                expect(statusAndResponse.response).to.be.a('object');
+                expect(statusAndResponse.response.code).to.be.equal(400);
+                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
+                expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer between 1 and (2^54)-2')
+                utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: Math.pow(2, 54) - 1}], function (statusAndResponse) {
+                    expect(statusAndResponse).to.be.a('object');
+                    expect(statusAndResponse.code).to.be.equal(400);
+                    expect(statusAndResponse.response).to.be.a('object');
+                    expect(statusAndResponse.response.code).to.be.equal(400);
+                    expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
+                    expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer between 1 and (2^54)-2')
+                    done()
+                })
+            })
+        })
+        it('should return success when amount is an integer between 1 and (2^54)-2', function (done) {
+            this.timeout(60000)
+            var inputAssets = [{assetName: 'a', amount: Math.pow(2, 54) - 2}]
             utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
                 expect(statusAndResponse).to.be.a('object');
                 expect(statusAndResponse.code).to.be.equal(200);
@@ -193,7 +194,6 @@ describe('Test utilColuFunctions', function () {
                 expect(statusAndResponse.response[0].indexOf(' ')).to.be.equal(-1)
                 done()
             })
-            
         })
 
         it('should return an array with different assetsIds and same order as input and status 200 when amount is declared and names are different', function (done) {
@@ -219,7 +219,7 @@ describe('Test utilColuFunctions', function () {
                         }
                     })
                 })
-        
+
             })
         })
         it('should return an array with distinct assetsIds and same order as input and status 200 when amount is declared and names are same or not declared', function (done) {// not doing anything!!!!
@@ -265,7 +265,7 @@ describe('Test utilColuFunctions', function () {
                 expect(statusAndResponse.response.length).to.be.equal(3);
                 var finishedGettingAssetData = 0
                 statusAndResponse.response.forEach(function (responseOfIssuingAsset, index) {
-                    if (index!=1) {
+                    if (index != 1) {
                         colu.coloredCoins.getAssetData({assetId: responseOfIssuingAsset}, function (err, assetData) {
                             finishedGettingAssetData++
                             expect(assetData.assetData[0].metadata.metadataOfIssuence.data.assetName).to.be.equal(inputAssetsReadyForAction[index].metadata.assetName)
@@ -283,10 +283,150 @@ describe('Test utilColuFunctions', function () {
             })
         })
     })
-    
-    describe('sendAsset', function(){
-        it('should return error 400 if one of the fields does not match the pattern its supposed to be', function(done){
-            done()
+
+    describe('sendAsset', function () {
+        var validAssetAddress = "moWWfCtKjiaY9EvpPQQw845bb3sHM894Yv"
+        var validAssetId = "La5wHsg3dKDP7mrU2visoVDNjSiM6fc45rNsSC"
+        it('should return error 400 if one of the string fields (toAddress,assetId) is not a string', function (done) {
+            this.timeout(10000)
+            utilColuFunctions.sendAsset(colu, {
+                toAddress: "abcd",
+                assetId: false,
+                amount: 1
+            }, function (statusAndResponse) {
+                expect(statusAndResponse).to.be.a('object');
+                expect(statusAndResponse.code).to.be.equal(400);
+                expect(statusAndResponse.response).to.be.a('object');
+                //add more checks
+                done()
+            })
+        })
+        //more validations
+        it('should return error of "Should have from as array of addresses or sendutxo as array of utxos" if no assets are associated with the wallet', function (done) {
+            this.timeout(20000)
+            utilColuFunctions.sendAsset(colu, {
+                toAddress: validAssetAddress,
+                assetId: validAssetId,
+                amount: 1
+            }, function (statusAndResponse) {
+                expect(statusAndResponse).to.be.a('object');
+                expect(statusAndResponse.code).to.be.equal(500);
+                expect(statusAndResponse.response).to.be.a('string');
+                expect(statusAndResponse.response).to.be.equal("Should have from as array of addresses or sendutxo as array of utxos.");
+                done()
+            })
+        })
+        it('should return error of "Should have from as array of addresses or sendutxo as array of utxos" if there is no one that holds that assetId', function (done) {
+            this.timeout(20000)
+            colu.issueAsset({amount: 1}, function (err, asset) {
+                utilColuFunctions.sendAsset(colu, {
+                    toAddress: validAssetAddress,
+                    assetId: 'noOneHoldsThisAssetIdCauseItDoesntExistPigsWillFlyInTheSkyBeforeThisAssetIdWillExist',
+                    amount: 1
+                }, function (statusAndResponse) {
+                    expect(statusAndResponse).to.be.a('object');
+                    expect(statusAndResponse.code).to.be.equal(500);
+                    expect(statusAndResponse.response).to.be.a('string');
+                    expect(statusAndResponse.response).to.be.equal("Should have from as array of addresses or sendutxo as array of utxos.");
+                    done()
+                })
+            })
+        })
+        it('should return error of "Not enough assets to cover transfer transaction" if the wallet doesnt have enough of the asset', function (done) {
+            this.timeout(20000)
+            colu.issueAsset({amount: 1}, function (err, asset) {
+                utilColuFunctions.sendAsset(colu, {
+                    toAddress: validAssetAddress,
+                    assetId: asset.assetId,
+                    amount: 2
+                }, function (statusAndResponse) {
+                    expect(statusAndResponse).to.be.a('object');
+                    expect(statusAndResponse.code).to.be.equal(500);
+                    expect(statusAndResponse.response.code).to.be.equal(20004);
+                    expect(statusAndResponse.response.status).to.be.equal(500);
+                    expect(statusAndResponse.response.name).to.be.equal('NotEnoughAssetsError')
+                    expect(statusAndResponse.response.message).to.be.equal('Not enough assets to cover transfer transaction')
+                    expect(statusAndResponse.response.asset).to.be.equal(asset.assetId);
+                    done()
+                })
+            })
+        })
+        it('should return error of "toAddress does not exist" if there is no such address anywhere', function (done) {
+            this.timeout(20000)
+            colu.issueAsset({amount: 1}, function (err, asset) {
+                utilColuFunctions.sendAsset(colu, {
+                    toAddress: 'noOneHoldsThisAddressCauseItDoesntExistPigsWillFlyInTheSkyBeforeThisAddressWillExist',
+                    assetId: asset.assetId,
+                    amount: 1
+                }, function (statusAndResponse) {
+                    expect(statusAndResponse).to.be.a('object');
+                    expect(statusAndResponse.code).to.be.equal(500);
+                    expect(statusAndResponse.response.code).to.be.equal(500)
+                    expect(statusAndResponse.response.response).to.be.equal('toAddress does not exist')
+                    done()
+                })
+            })
+        })
+        it('should return success and transfer the amount of the asset from the wallet to the address specified', function (done) {
+            this.timeout(30000)
+            colu.issueAsset({amount: 1}, function (err, asset) {
+                utilColuFunctions.sendAsset(colu, {
+                    toAddress: validAssetAddress,
+                    assetId: asset.assetId,
+                    amount: 1
+                }, function (statusAndResponse) {
+                    expect(statusAndResponse).to.be.a('object');
+                    expect(statusAndResponse.code).to.be.equal(200);
+                    expect(statusAndResponse.response).to.be.a('string')
+                    expect(statusAndResponse.response.length).to.be.equal(64)
+                    var lettersAndNumbersOnly = new RegExp(/^[0-9a-zA-Z]+$/)
+                    expect(lettersAndNumbersOnly.test(statusAndResponse.response)).to.be.equal(true)
+                    colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
+                        var senderAddressAndAmount = {address: asset.issueAddress, amount: 0}
+                        var receiverAddressAndAmount = {address: validAssetAddress, amount: 1}
+                        console.log(assetHolders.holders, senderAddressAndAmount, receiverAddressAndAmount)
+                        //expect(assetHolders.holders).to.include.deep(senderAddressAndAmount)
+                        expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
+                        done()
+                    })
+
+                })
+            })
+        })
+        it('should return success and transfer the asset from a group of addresses in the wallet if more than one address in the wallet holds this asset and all together they have enough', function (done) {
+            this.timeout(50000)
+            colu.issueAsset({amount: 100}, function (err, firstIssuedAsset) {
+                colu.issueAsset({amount: 100}, function (err, secondIssuedAsset) {
+                    var assetAddress = secondIssuedAsset.issueAddress
+                    utilColuFunctions.sendAsset(colu, {toAddress: assetAddress, assetId: firstIssuedAsset.assetId, amount: 50}, function (statusAndResponse) {
+                        colu.coloredCoins.getStakeHolders(firstIssuedAsset.assetId, function (err, firstTimeAssetHolders) {
+                            var senderAddressAndAmount = {address: firstIssuedAsset.issueAddress, amount: 50}
+                            var receiverAddressAndAmount = {address: secondIssuedAsset.issueAddress, amount: 50}
+                            expect(firstTimeAssetHolders.holders).to.include.deep(senderAddressAndAmount)
+                            expect(firstTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
+                            utilColuFunctions.sendAsset(colu, {toAddress: validAssetAddress, assetId: firstIssuedAsset.assetId, amount: 75}, function (statusAndResponse) {
+                                colu.coloredCoins.getStakeHolders(firstIssuedAsset.assetId, function (err, secondTimeAssetHolders) {
+                                    var senderAddressAndAmountOption1 = {
+                                        address: firstIssuedAsset.issueAddress,
+                                        amount: 25
+                                    }
+                                    var senderAddressAndAmountOption2 = {
+                                        address: secondIssuedAsset.issueAddress,
+                                        amount: 25
+                                    }
+                                    var receiverAddressAndAmount = {address: validAssetAddress, amount: 75}
+                                    expect(secondTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
+                                    var assetTransferedCorrectly = JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption1)) > -1 ||
+                                        JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption2)) > -1
+                                    console.log('JSONSTRINGIFY',JSON.stringify(secondTimeAssetHolders.holders), JSON.stringify(senderAddressAndAmountOption1), JSON.stringify(senderAddressAndAmountOption2))
+                                    expect(assetTransferedCorrectly).to.be.true
+                                    done()
+                                })
+                            })
+                        })
+                    })
+                })
+            })
         })
     })
 })
@@ -411,7 +551,7 @@ describe('utilEncoder', function () {
             expect(observedHex).to.equal(expectedHex);
         });
     });
-    describe('encodeFullNumber', function () {
+    describe.only('encodeFullNumber', function () {
         it('should return hex that is bigger in 2^exponentBits (in hex) than previous when number of bytes is not changing and exponent is 0', function () {
             var prevEncodedNumber = utilEncoder.encodeFullNumber(991);
             for (var i = 992; i < 2010; i++) {
@@ -478,14 +618,46 @@ describe('utilEncoder', function () {
                 expect(observedHex).to.equal(expectedHex);
             })
         })
-        it('should return correct result for the examples in the task description', function () {
-            var numbers = [1, 1200032, 1232, 1002000000, 928867423145164, 132300400000];
-            var expectedHexes = ['01', '6124fa00', '404d00', '403ea6', 'c34ccccccccccc', '6142ffc5'];
+        it('should return correct result for the examples in the task description and the highest number that can be encoded', function () {
+            var numbers = [1, 1200032, 1232, 1002000000, 928867423145164, 132300400000, Number.MAX_SAFE_INTEGER];
+            var expectedHexes = ['01', '6124fa00', '404d00', '403ea6', 'c34ccccccccccc', '6142ffc5', 'dfffffffffffff'];
             numbers.forEach(function (number, index) {
                 var expectedHex = expectedHexes[index];
                 var observedHex = utilEncoder.encodeFullNumber(number)
                 expect(observedHex).to.equal(expectedHex);
             })
+        })
+    })
+    describe('encodeNumber', function(){
+        it('should return error saying "number should be an integer between 0 and (2^53)-1" when its not in that range and pattern of success otherwise', function(){
+            var number = -1
+            utilEncoder.encodeNumber(number, function (statusAndResponse){
+                expect(statusAndResponse).to.eql({
+                    code: validationErrorCode,
+                    response: {
+                        code: validationErrorCode,
+                        message: validationErrorMessage,
+                        explanation: 'number should be an integer between 0 and (2^53)-1 (Number.MAX_SAFE_INTEGER)'
+                    }
+                })
+            })
+            
+            var number = Number.Max_SAFE_INTEGER+1
+            utilEncoder.encodeNumber(number, function(statusAndResponse){
+                expect(statusAndResponse).to.eql({
+                    code: validationErrorCode,
+                    response: {
+                        code: validationErrorCode,
+                        message: validationErrorMessage,
+                        explanation: 'number should be an integer between 0 and (2^53)-1 (Number.MAX_SAFE_INTEGER)'
+                    }
+                })
+            })
+            var number = 1232
+            utilEncoder.encodeNumber(number, function(statusAndResponse){
+                expect(statusAndResponse).to.eql({code: 200, response: '404d00'})
+            })
+            
         })
     })
 })

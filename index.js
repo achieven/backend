@@ -30,15 +30,19 @@ colu.on('connect', function () {
     app.use(bodyParser.json())
     app.use(bodyParser.urlencoded({extended: true}));
     app.get('/', function (req, res) {// remove before sending
-        
         var html = Handlebars.compile(fs.readFileSync('./index.html', 'utf8'))();
         res.send(html);
     });
 
+
+    function sendResponse(res, statusAndResponse) {
+        res.status(statusAndResponse.code).send(statusAndResponse.response);
+    }
+
     app.get('/assets', function (req, res, next) {
         // next('blah blah')
-        utilColuFunctions.getAssets(colu, function (statusAndResponse) {
-            res.status(statusAndResponse.code).send(statusAndResponse.response);
+        utilColuFunctions.getAssets(colu, function(statusAndResponse){
+            sendResponse(res, statusAndResponse)
         });
     });
 
@@ -54,7 +58,7 @@ colu.on('connect', function () {
         // res.send('aaa')
         //console.log('###',res)
         else utilColuFunctions.issueAssets(colu, req.body.assets, function (statusAndResponse) {
-            res.status(statusAndResponse.code).send(statusAndResponse.response);
+            sendResponse(res, statusAndResponse)
         })
     });
 
@@ -67,7 +71,7 @@ colu.on('connect', function () {
             })
         }
         else utilColuFunctions.sendAsset(colu, {toAddress: req.body.toAddress, assetId: req.body.assetId, amount: req.body.amount} , function (statusAndResponse) {
-            res.status(statusAndResponse.code).send(statusAndResponse.response);
+            sendResponse(res, statusAndResponse)
         })
     });
 
@@ -80,8 +84,8 @@ colu.on('connect', function () {
                 explanation: 'req.body is not defined properly'
             })
         }
-        util.encoder.encodeNumber(req.body, function (statusAndResponse) {
-            res.status(statusAndResponse.code).send(statusAndResponse.response);
+        util.encoder.encodeNumber(req.body.number, function (statusAndResponse) {
+            sendResponse(res, statusAndResponse)
         })
         // util.encoder.encodeNumber(req.body)
         // var number = parseInt(req.body.number);
