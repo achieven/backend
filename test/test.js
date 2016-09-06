@@ -1,15 +1,371 @@
 /* eslint-env mocha */
-var validationErrorMessage = 'Validation error';
-var validationErrorCode = 400
-var Colu = require('colu')
-var testUtils = require('colu/test/test-utils.js')
-var expect = require('chai').expect
-var util = require('../util/util.js')
+const validationErrorMessage = 'Validation error';
+const validationErrorCode = 400
+const Colu = require('colu')
+const expect = require('chai').expect
+const util = require('../util/util.js')
+const alphanumericNotEmptyRegex = /^[a-z0-9]+$/i
 
 describe('Test utilColuFunctions', function () {
 
+
     var colu
-    var utilColuFunctions = util.coluCalls
+    const utilColuFunctions = util.processRequests.coluCalls
+    const validations = util.validations
+
+    describe('validateColuGeneratedString', function () {
+        it('should return error 400 with message saying "<property> is not valid, use non empty alphanumeric string" when property isnt string or not only alphanumeric', function () {
+            var key = 'some property'
+            var optionalPrefix = ''
+            var expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'some property is not valid, use non empty alphanumeric string'
+            }
+            var value
+            var observedResponse
+
+            value = true
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = false
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = 1
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = 0
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = undefined
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = null
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = {}
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = []
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = Symbol()
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = ''
+            observedResponse = validations.validateColuGeneratedString(key, value, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = 'only1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZallowed.butCantHaveNonAlphanumbericCharacters'
+            observedResponse = validations.validateColuGeneratedString(key, value, 'prefix ')
+            expect(observedResponse.errorCode).to.be.equal(expectedResponse.errorCode)
+            expect(observedResponse.errorResponse).to.be.equal('prefix ' + expectedResponse.errorResponse)
+            value = 'only1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZallowed butCantHaveNonAlphanumbericCharacters'
+            observedResponse = validations.validateColuGeneratedString(key, value, 'prefix ')
+            expect(observedResponse.errorCode).to.be.equal(expectedResponse.errorCode)
+            expect(observedResponse.errorResponse).to.be.equal('prefix ' + expectedResponse.errorResponse)
+
+        })
+        it('should return undefined when the property is a string with no spaces and not empty', function () {
+            var key = 'some property'
+            var value = 'only1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZallowed'
+            var observedResponse = validations.validateColuGeneratedString(key, value, 'prefix ')
+            expect(observedResponse).to.be.undefined
+        })
+    })
+    describe('validateNumber', function () {
+        it('should return error 400 saying "<property> should be an integer between <minLimit+1> and <maxLimit -1>" when its not an integer or not in that spectrum', function () {
+            var key = 'some property'
+            var minLimit = 0
+            var maxLimit = Math.pow(2, 54) - 2
+            var optionalPrefix = ''
+            var expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'some property should be an integer between ' + minLimit + ' and ' + maxLimit
+            }
+            var value
+            var observedResponse
+
+            value = true
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = false
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = undefined
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = null
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = Symbol()
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = []
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = {}
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = 1.2
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = '1.2'
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = -1
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = '-1'
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = Math.pow(2, 54) - 1
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            value = (Math.pow(2, 54) - 1).toString()
+            observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, 'prefix ')
+            expect(observedResponse.errorCode).to.be.equal(expectedResponse.errorCode)
+            expect(observedResponse.errorResponse).to.be.equal('prefix ' + expectedResponse.errorResponse)
+        })
+        it('should return undefined when the property is an integer between minLimit and maxLimit', function () {
+            var key = 'some property'
+            var minLimit = 0
+            var maxLimit = Math.pow(2, 54) - 2
+            var optionalPrefix = ''
+            var value
+            var observedResponse
+
+            value = 0
+            var observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+            value = '0'
+            var observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+            value = Math.pow(2, 54) - 2
+            var observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+            value = (Math.pow(2, 54) - 2).toString()
+            var observedResponse = validations.validateNumber(key, value, minLimit, maxLimit, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+        })
+    })
+    describe('validateArray', function () {
+        it('should return error 400 saying "should be an array with properties in it" when array isnt array or has length 0', function () {
+            var optionalPrefix = ''
+            var expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'should be an array with properties in it'
+            }
+            var inputArray
+            var observedResponse
+
+            inputArray = true
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = false
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = 1
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = 0
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = undefined
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = null
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = Symbol()
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = 'string'
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = {}
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputArray = []
+            observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+        })
+        it('should return undefined if array has any property in it', function () {
+            var optionalPrefix = ''
+            var inputArray = [1]
+            var observedResponse = validations.validateArray(inputArray, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+
+        })
+    })
+    describe('validateObject', function () {
+        it('should return error 400 saying "should be an Object" when input not an object', function () {
+            var optionalPrefix = ''
+            var expectedResponse = {errorCode: validationErrorCode, errorResponse: 'should be an Object'}
+            var inputObject
+            var observedResponse
+
+            inputObject = true
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = false
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = 1
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = 0
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = undefined
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = null
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = 'string'
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = Symbol()
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputObject = []
+            observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+        })
+        it('should return undefined when input is an object', function () {
+            var optionalPrefix = ''
+            var inputObject = {}
+            var observedResponse = validations.validateObject(inputObject, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+        })
+    })
+    describe('validateIssueAssets', function () {
+        var
+            validAsset1 = {amount: 100}, validAsset2 = {amount: 100, assetName: 'achi'}, validAsset3 = {
+                amount: 100,
+                assetName: []
+            },
+            validAsset4 = {amount: 100, assetName: true}, validAsset5 = {
+                amount: 100,
+                assetName: null
+            }, validAsset6 = {amount: 100, assetName: 1}
+        it('should return error 400 if inputAssets is not valid according to "validateArray" or one of the inputAssets is not an object according to "validateObject or has no valid amount according to "validateNumber"', function () {
+            var inputAssets
+            var expectedResponse
+            var observedResponse
+
+            inputAssets = []
+            expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'should be an array with properties in it'
+            }
+            observedResponse = validations.validateIssueAssets(inputAssets)
+            expect(observedResponse).to.eql(expectedResponse)
+
+            inputAssets = [validAsset2, true]
+            expectedResponse = {errorCode: validationErrorCode, errorResponse: 'input assets at 1, should be an Object'}
+            observedResponse = validations.validateIssueAssets(inputAssets)
+            expect(observedResponse).to.eql(expectedResponse)
+
+            inputAssets = [validAsset2, {}]
+            expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'input assets at 1, amount should be an integer between ' + 0 + ' and ' + (Math.pow(2, 54) - 2)
+            }
+            observedResponse = validations.validateIssueAssets(inputAssets)
+            expect(observedResponse).to.eql(expectedResponse)
+            inputAssets = [validAsset2, {ammount: 2}]
+            expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'input assets at 1, amount should be an integer between ' + 0 + ' and ' + (Math.pow(2, 54) - 2)
+            }
+            observedResponse = validations.validateIssueAssets(inputAssets)
+            expect(observedResponse).to.eql(expectedResponse)
+        })
+        it('should return array of objects, each has amount and assetName(could be anything) if each property in the array is an object and has "amount" property', function () {
+            var inputAssets
+            var expectedResponse
+            var observedResponse
+
+            inputAssets = [validAsset1, validAsset2, validAsset3, validAsset4, validAsset5, validAsset6]
+            expectedResponse = [
+                {amount: validAsset1.amount, metadata: {assetName: undefined}},
+                {amount: validAsset2.amount, metadata: {assetName: validAsset2.assetName}},
+                {amount: validAsset3.amount, metadata: {assetName: validAsset3.assetName}},
+                {amount: validAsset4.amount, metadata: {assetName: validAsset4.assetName}},
+                {amount: validAsset5.amount, metadata: {assetName: validAsset5.assetName}},
+                {amount: validAsset6.amount, metadata: {assetName: validAsset6.assetName}}
+            ]
+            observedResponse = validations.validateIssueAssets(inputAssets)
+            //console.log('!!!', observedResponse)
+            expect(observedResponse).to.eql(expectedResponse)
+        })
+    })
+    describe('validateSendAsset', function () {
+        var validToAddress = 'moWWfCtKjiaY9EvpPQQw845bb3sHM894Yv'
+        var validAssetId = 'La34T2ggNEqZ3yYMYXVR9kdqSN6pKs5qggcaYD'
+        var validAmount = 100
+        it('should return error 400 if sendAssetProperties is not an object according to "validateObject" or toAddress or assetId are not valid according to "validateColuGeneratedString" or amount is not validaccording to "validateNumber"', function () {
+            var sendAssetProperties
+            var expectedResponse
+            var observedResponse
+            sendAssetProperties = []
+            expectedResponse = {errorCode: validationErrorCode, errorResponse: 'should be an Object'}
+            observedResponse = validations.validateSendAsset(sendAssetProperties)
+            expect(observedResponse).to.eql(expectedResponse)
+
+            sendAssetProperties = {toAddress: 2, assetId: validAssetId, amount: validAmount}
+            expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'toAddress is not valid, use non empty alphanumeric string'
+            }
+            observedResponse = validations.validateSendAsset(sendAssetProperties)
+            expect(observedResponse).to.eql(expectedResponse)
+            sendAssetProperties = {toAddress: validToAddress, assetId: {}, amount: validAmount}
+            expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'assetId is not valid, use non empty alphanumeric string'
+            }
+            observedResponse = validations.validateSendAsset(sendAssetProperties)
+            expect(observedResponse).to.eql(expectedResponse)
+            sendAssetProperties = {toAddress: validToAddress, assetId: validAssetId, amount: undefined}
+            expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'amount should be an integer between ' + 0 + ' and ' + (Math.pow(2, 54) - 2)
+            }
+            observedResponse = validations.validateSendAsset(sendAssetProperties)
+            expect(observedResponse).to.eql(expectedResponse)
+        })
+        it('should return undefined if sendAssetProperties is an object that contains properties toAddress, assetId & amount', function () {
+            var sendAssetProperties = {toAddress: validToAddress, assetId: validAssetId, amount: validAmount}
+            var observedResponse = validations.validateSendAsset(sendAssetProperties)
+            expect(observedResponse).to.be.undefined
+        })
+    })
+
+    describe('determineStatusAndResponse', function () {
+        var sendResponse = function (statusAndResponse) {
+            return statusAndResponse
+        }
+        it('should return error with the code specified in the error if it is a code that exist in codes.json of body-parser', function () {
+            var err = {code: 400, message: validationErrorMessage, explanation: 'some explanation'}
+            var whatIsReturned = utilColuFunctions.determineStatusAndResponse(err, ['not empty array'], sendResponse)
+            var expectedResponse = {code: 400, response: err}
+            expect(whatIsReturned).to.eql(expectedResponse)
+        })
+        it('should return error with code 500 if it is a code that doesnt exist in codes.json of body-parser', function () {
+            var err = 'some problem occured!'
+            var whatIsReturned = utilColuFunctions.determineStatusAndResponse(err, null, sendResponse)
+            var expectedResponse = {code: 500, response: err}
+            expect(whatIsReturned).to.eql(expectedResponse)
+        })
+        it('should return code 200 with the results as response', function () {
+            var results = ['1234', '5678']
+            var whatIsReturned = utilColuFunctions.determineStatusAndResponse(null, results, sendResponse)
+            var expectedResponse = {code: 200, response: results}
+            expect(whatIsReturned).to.eql(expectedResponse)
+        })
+    })
+
 
     before(function (done) {/// error something with 2000
         this.timeout(10000)
@@ -22,6 +378,7 @@ describe('Test utilColuFunctions', function () {
         colu.on('connect', done)
         colu.init()
     })
+
     describe('getAssets', function () {
         it('Should return an empty list of assets when no assets have been issued, with status 200', function (done) {
             this.timeout(5000)
@@ -49,185 +406,60 @@ describe('Test utilColuFunctions', function () {
                 })
             })
         })
-    });
-
-    describe('issueAssets', function () {
-        var correctAssetToIssue = {amount: 100, assetName: 'achi'}
-        it('should return error 400 saying "input assets is not an array" when it is not an array', function (done) {
+        it('should return distinct list of assets when colus getAssets function returns duplicate assets', function (done) {
             this.timeout(20000)
-            utilColuFunctions.issueAssets(colu, undefined, function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                expect(statusAndResponse.response.code).to.be.equal(400);
-                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                expect(statusAndResponse.response.explanation).to.equal('input assets is not an array')
-                utilColuFunctions.issueAssets(colu, null, function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(400);
-                    expect(statusAndResponse.response).to.be.a('object');
-                    expect(statusAndResponse.response.code).to.be.equal(400);
-                    expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                    expect(statusAndResponse.response.explanation).to.equal('input assets is not an array')
-                    utilColuFunctions.issueAssets(colu, {}, function (statusAndResponse) {
-                        expect(statusAndResponse).to.be.a('object');
-                        expect(statusAndResponse.code).to.be.equal(400);
-                        expect(statusAndResponse.response).to.be.a('object');
-                        expect(statusAndResponse.response.code).to.be.equal(400);
-                        expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                        expect(statusAndResponse.response.explanation).to.equal('input assets is not an array')
-                        utilColuFunctions.issueAssets(colu, true, function (statusAndResponse) {
-                            expect(statusAndResponse).to.be.a('object');
-                            expect(statusAndResponse.code).to.be.equal(400);
-                            expect(statusAndResponse.response).to.be.a('object');
-                            expect(statusAndResponse.response.code).to.be.equal(400);
-                            expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                            expect(statusAndResponse.response.explanation).to.equal('input assets is not an array')
-                            utilColuFunctions.issueAssets(colu, 'hello', function (statusAndResponse) {
-                                expect(statusAndResponse).to.be.a('object');
-                                expect(statusAndResponse.code).to.be.equal(400);
-                                expect(statusAndResponse.response).to.be.a('object');
-                                expect(statusAndResponse.response.code).to.be.equal(400);
-                                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                                expect(statusAndResponse.response.explanation).to.equal('input assets is not an array')
-                                utilColuFunctions.issueAssets(colu, Symbol(), function (statusAndResponse) {
-                                    expect(statusAndResponse).to.be.a('object');
-                                    expect(statusAndResponse.code).to.be.equal(400);
-                                    expect(statusAndResponse.response).to.be.a('object');
-                                    expect(statusAndResponse.response.code).to.be.equal(400);
-                                    expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                                    expect(statusAndResponse.response.explanation).to.equal('input assets is not an array')
-                                    done()
-                                })
+            colu.issueAsset({amount: 2}, function (err, firstAsset) {
+                colu.issueAsset({amount: 2}, function (err, secondAsset) {
+                    var to = [{
+                        address: secondAsset.issueAddress,
+                        assetId: firstAsset.assetId,
+                        amount: 1
+                    }]
+                    var from = [firstAsset.issueAddress]
+                    colu.sendAsset({from:from, to:to}, function (err, sentAsset) {
+                        colu.getAssets(function(err, assets){
+                            var assetsIdsWithDuplicates = []//reomve
+                            assets.forEach(function(asset){
+                                assetsIdsWithDuplicates.push(asset.assetId)
+                            })
+                            var assetsIdsWithoutDuplicates = Array.from(new Set(assetsIdsWithDuplicates))
+                            expect(assetsIdsWithoutDuplicates.length).to.equal(assetsIdsWithDuplicates.length-1)
+                            utilColuFunctions.getAssets(colu, function (statusAndResponse) {
+                                var statusAndResponseUnique = Array.from(new Set(statusAndResponse.response))
+                                expect(statusAndResponse).to.be.a('object')
+                                expect(statusAndResponse.code).to.be.equal(200)
+                                expect(statusAndResponse.response).to.be.a('array')
+                                expect(statusAndResponse.response).to.eql(statusAndResponseUnique)
+                                done()
                             })
                         })
+                        
                     })
                 })
             })
         })
-        it('should return error 400 saying "input assets has length of 0, there is nothing to issue" when array is with length 0', function (done) {
-            this.timeout(20000)
-            utilColuFunctions.issueAssets(colu, [], function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                expect(statusAndResponse.response.code).to.be.equal(400);
-                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                expect(statusAndResponse.response.explanation).to.equal('input assets has length of 0, there is nothing to issue')
-                done()
-            })
-        })
-        it('should return error 400 saying "input assets at <index> is not an object" when one of the assets to be issued is not a json', function (done) {
-            this.timeout(20000)
-            utilColuFunctions.issueAssets(colu, [correctAssetToIssue, 1], function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                expect(statusAndResponse.response.code).to.be.equal(400);
-                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                expect(statusAndResponse.response.explanation).to.equal('input assets at 1 is not an Object')
-                done()
-            })
-        })
-        it('should return an error 400 saying "input assets at <index> amount is not specified" when amount is not declared', function (done) {
-            this.timeout(20000)
-            utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {ammountIsWrittenWithOneM: 100}], function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                expect(statusAndResponse.response.code).to.be.equal(400);
-                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount is not specified')
-                done()
-            })
-        })
-        it('should return an error 400 saying "input assets at <index>,  amount should be an integer between 1 and (2^54)-2" when amount is not an integer or a string that represents an integer', function (done) {
-            this.timeout(20000)
-            utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: 1.2}], function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                expect(statusAndResponse.response.code).to.be.equal(400);
-                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer between 1 and (2^54)-2')
-                utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: "1.2"}], function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(400);
-                    expect(statusAndResponse.response).to.be.a('object');
-                    expect(statusAndResponse.response.code).to.be.equal(400);
-                    expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                    expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer between 1 and (2^54)-2')
-                    done()
-                })
-            })
-        })
-        it('should return an error 400 saying "input assets at <index>,  amount should be an integer between 1 and (2^54)-2" when amount is not between 1 and (2^54)-2', function (done) {
-            this.timeout(20000)
-            utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: 0}], function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                expect(statusAndResponse.response.code).to.be.equal(400);
-                expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer between 1 and (2^54)-2')
-                utilColuFunctions.issueAssets(colu, [correctAssetToIssue, {amount: Math.pow(2, 54) - 1}], function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(400);
-                    expect(statusAndResponse.response).to.be.a('object');
-                    expect(statusAndResponse.response.code).to.be.equal(400);
-                    expect(statusAndResponse.response.message).to.equal(validationErrorMessage)
-                    expect(statusAndResponse.response.explanation).to.equal('input assets at 1, amount should be an integer between 1 and (2^54)-2')
-                    done()
-                })
-            })
-        })
-        it('should return success when amount is an integer between 1 and (2^54)-2', function (done) {
-            this.timeout(60000)
-            var inputAssets = [{assetName: 'a', amount: Math.pow(2, 54) - 2}]
-            utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(200);
-                expect(statusAndResponse.response).to.be.a('array');
-                expect(statusAndResponse.response.length).to.be.equal(1)
-                expect(statusAndResponse.response[0]).to.be.a('string')
-                expect(statusAndResponse.response[0].length).to.be.equal(38)
-                expect(statusAndResponse.response[0].indexOf(' ')).to.be.equal(-1)
-                done()
-            })
-        })
+    })
 
-        it('should return an array with different assetsIds and same order as input and status 200 when amount is declared and names are different', function (done) {
+    describe('issueAssets', function () {
+        var validAssetToIssue1 = {amount: 100, assetName: 'achi'}, validAssetToIssue2 = {
+            amount: 100,
+            assetName: 'yosi'
+        }, validAssetToIssue3 = {amount: 100, assetName: 'micha'}
+        it('should return error if not passing validation', function (done) {
+            var inputAssets = [validAssetToIssue1, {}]
+            utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
+                var expectedResponse = {
+                    code: 400,
+                    response: 'input assets at 1, amount should be an integer between 0 and ' + (Math.pow(2, 54) - 2)
+                }
+                expect(statusAndResponse).to.eql(expectedResponse)
+                done()
+            })
+        })
+        
+        it('should return an array with assetsIds and same order as input and status 200 when all input assets are valid', function (done) {
             this.timeout(90000);
-            var inputAssets = [{assetName: 'a', amount: 100}, {assetName: 'b', amount: 100}, {
-                assetName: 'c',
-                amount: 100
-            }]
-            utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(200);
-                expect(statusAndResponse.response).to.be.a('array');
-                expect(statusAndResponse.response.length).to.be.equal(3);
-                var finishedGettingAssetData = 0
-                statusAndResponse.response.forEach(function (assetId, index) {
-                    colu.coloredCoins.getAssetData({assetId: assetId}, function (err, assetData) {
-                        finishedGettingAssetData++
-                        if (!err) {
-                            expect(assetData.assetData[0].metadata.metadataOfIssuence.data.assetName).to.be.equal(inputAssets[index].assetName)
-                        }
-                        if (finishedGettingAssetData === inputAssets.length) {
-                            done()
-                        }
-                    })
-                })
-
-            })
-        })
-        it('should return an array with distinct assetsIds and same order as input and status 200 when amount is declared and names are same or not declared', function (done) {// not doing anything!!!!
-            this.timeout(100000);
-            var inputAssets = [{assetName: 'a', amount: 100}, {assetName: 'a', amount: 200}, {
-                assetName: 'a',
-                amount: 300
-            }]
+            var inputAssets = [validAssetToIssue1, validAssetToIssue2, validAssetToIssue3]
             utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
                 expect(statusAndResponse).to.be.a('object');
                 expect(statusAndResponse.code).to.be.equal(200);
@@ -248,18 +480,17 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return an array with errors and assets ids with same order as input when some have errors', function (done) {
-            this.timeout(100000);
+            this.timeout(120000);
             var inputAssetsReadyForAction = [{metadata: {assetName: 'a'}, amount: 100}, {
                 metadata: {assetName: 'b'},
                 amount: -1
             }, {metadata: {assetName: 'c'}, amount: 300}]
-            utilColuFunctions.validateIssueAssets = function () {
-                return {
-                    inputAssetsReadyForAction: inputAssetsReadyForAction
-                }
+            validations.validateIssueAssets = function () {
+                return inputAssetsReadyForAction
             }
             utilColuFunctions.issueAssets(colu, inputAssetsReadyForAction, function (statusAndResponse) {
                 expect(statusAndResponse).to.be.a('object');
+                //console.log('###', statusAndResponse)
                 expect(statusAndResponse.code).to.be.equal(500);
                 expect(statusAndResponse.response).to.be.a('array');
                 expect(statusAndResponse.response.length).to.be.equal(3);
@@ -287,21 +518,18 @@ describe('Test utilColuFunctions', function () {
     describe('sendAsset', function () {
         var validAssetAddress = "moWWfCtKjiaY9EvpPQQw845bb3sHM894Yv"
         var validAssetId = "La5wHsg3dKDP7mrU2visoVDNjSiM6fc45rNsSC"
-        it('should return error 400 if one of the string fields (toAddress,assetId) is not a string', function (done) {
-            this.timeout(10000)
+        it('should return error if not passing validation', function (done) {
+            this.timeout(20000)
             utilColuFunctions.sendAsset(colu, {
-                toAddress: "abcd",
-                assetId: false,
-                amount: 1
-            }, function (statusAndResponse) {
-                expect(statusAndResponse).to.be.a('object');
-                expect(statusAndResponse.code).to.be.equal(400);
-                expect(statusAndResponse.response).to.be.a('object');
-                //add more checks
+                toAddress: validAssetAddress,
+                assetId: {},
+                amount: 100
+            }, function (statusAndResposen) {
+                var expectedResponse = {code: 400, response: 'assetId is not valid, use non empty alphanumeric string'}
+                expect(statusAndResposen).to.eql(expectedResponse)
                 done()
             })
         })
-        //more validations
         it('should return error of "Should have from as array of addresses or sendutxo as array of utxos" if no assets are associated with the wallet', function (done) {
             this.timeout(20000)
             utilColuFunctions.sendAsset(colu, {
@@ -378,18 +606,15 @@ describe('Test utilColuFunctions', function () {
                     expect(statusAndResponse).to.be.a('object');
                     expect(statusAndResponse.code).to.be.equal(200);
                     expect(statusAndResponse.response).to.be.a('string')
-                    expect(statusAndResponse.response.length).to.be.equal(64)
-                    var lettersAndNumbersOnly = new RegExp(/^[0-9a-zA-Z]+$/)
-                    expect(lettersAndNumbersOnly.test(statusAndResponse.response)).to.be.equal(true)
+                    expect(alphanumericNotEmptyRegex.test(statusAndResponse.response)).to.be.equal(true)
                     colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
                         var senderAddressAndAmount = {address: asset.issueAddress, amount: 0}
                         var receiverAddressAndAmount = {address: validAssetAddress, amount: 1}
-                        console.log(assetHolders.holders, senderAddressAndAmount, receiverAddressAndAmount)
+                        //console.log(assetHolders.holders, senderAddressAndAmount, receiverAddressAndAmount)
                         //expect(assetHolders.holders).to.include.deep(senderAddressAndAmount)
                         expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
                         done()
                     })
-
                 })
             })
         })
@@ -398,13 +623,21 @@ describe('Test utilColuFunctions', function () {
             colu.issueAsset({amount: 100}, function (err, firstIssuedAsset) {
                 colu.issueAsset({amount: 100}, function (err, secondIssuedAsset) {
                     var assetAddress = secondIssuedAsset.issueAddress
-                    utilColuFunctions.sendAsset(colu, {toAddress: assetAddress, assetId: firstIssuedAsset.assetId, amount: 50}, function (statusAndResponse) {
+                    utilColuFunctions.sendAsset(colu, {
+                        toAddress: assetAddress,
+                        assetId: firstIssuedAsset.assetId,
+                        amount: 50
+                    }, function (statusAndResponse) {
                         colu.coloredCoins.getStakeHolders(firstIssuedAsset.assetId, function (err, firstTimeAssetHolders) {
                             var senderAddressAndAmount = {address: firstIssuedAsset.issueAddress, amount: 50}
                             var receiverAddressAndAmount = {address: secondIssuedAsset.issueAddress, amount: 50}
                             expect(firstTimeAssetHolders.holders).to.include.deep(senderAddressAndAmount)
                             expect(firstTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
-                            utilColuFunctions.sendAsset(colu, {toAddress: validAssetAddress, assetId: firstIssuedAsset.assetId, amount: 75}, function (statusAndResponse) {
+                            utilColuFunctions.sendAsset(colu, {
+                                toAddress: validAssetAddress,
+                                assetId: firstIssuedAsset.assetId,
+                                amount: 75
+                            }, function (statusAndResponse) {
                                 colu.coloredCoins.getStakeHolders(firstIssuedAsset.assetId, function (err, secondTimeAssetHolders) {
                                     var senderAddressAndAmountOption1 = {
                                         address: firstIssuedAsset.issueAddress,
@@ -418,7 +651,7 @@ describe('Test utilColuFunctions', function () {
                                     expect(secondTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
                                     var assetTransferedCorrectly = JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption1)) > -1 ||
                                         JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption2)) > -1
-                                    console.log('JSONSTRINGIFY',JSON.stringify(secondTimeAssetHolders.holders), JSON.stringify(senderAddressAndAmountOption1), JSON.stringify(senderAddressAndAmountOption2))
+                                    //console.log('JSONSTRINGIFY', JSON.stringify(secondTimeAssetHolders.holders), JSON.stringify(senderAddressAndAmountOption1), JSON.stringify(senderAddressAndAmountOption2))
                                     expect(assetTransferedCorrectly).to.be.true
                                     done()
                                 })
@@ -433,7 +666,7 @@ describe('Test utilColuFunctions', function () {
 
 
 describe('utilEncoder', function () {
-    var utilEncoder = util.encoder
+    var utilEncoder = util.processRequests.encoder
     describe('calculateMantisExponentDecimal', function () {
         it('should return the number itself and exponent 0 for numbers that dont divide in 10', function () {
             var number = 1234;
@@ -551,7 +784,7 @@ describe('utilEncoder', function () {
             expect(observedHex).to.equal(expectedHex);
         });
     });
-    describe.only('encodeFullNumber', function () {
+    describe('encodeFullNumber', function () {
         it('should return hex that is bigger in 2^exponentBits (in hex) than previous when number of bytes is not changing and exponent is 0', function () {
             var prevEncodedNumber = utilEncoder.encodeFullNumber(991);
             for (var i = 992; i < 2010; i++) {
@@ -628,36 +861,27 @@ describe('utilEncoder', function () {
             })
         })
     })
-    describe('encodeNumber', function(){
-        it('should return error saying "number should be an integer between 0 and (2^53)-1" when its not in that range and pattern of success otherwise', function(){
-            var number = -1
-            utilEncoder.encodeNumber(number, function (statusAndResponse){
-                expect(statusAndResponse).to.eql({
-                    code: validationErrorCode,
-                    response: {
-                        code: validationErrorCode,
-                        message: validationErrorMessage,
-                        explanation: 'number should be an integer between 0 and (2^53)-1 (Number.MAX_SAFE_INTEGER)'
-                    }
-                })
+    describe('encodeNumber', function () {
+        it('should return error saying "number should be an integer between 0 and (2^53)-1" when its not in that range and pattern of success otherwise', function () {
+            var number
+            var expectedResponse = {
+                code: validationErrorCode,
+                response: 'number should be an integer between 0 and ' + Number.MAX_SAFE_INTEGER
+            }
+            number = -1
+            utilEncoder.encodeNumber(number, function (statusAndResponse) {
+                expect(statusAndResponse).to.eql(expectedResponse)
             })
-            
-            var number = Number.Max_SAFE_INTEGER+1
-            utilEncoder.encodeNumber(number, function(statusAndResponse){
-                expect(statusAndResponse).to.eql({
-                    code: validationErrorCode,
-                    response: {
-                        code: validationErrorCode,
-                        message: validationErrorMessage,
-                        explanation: 'number should be an integer between 0 and (2^53)-1 (Number.MAX_SAFE_INTEGER)'
-                    }
-                })
+
+            number = Number.Max_SAFE_INTEGER + 1
+            utilEncoder.encodeNumber(number, function (statusAndResponse) {
+                expect(statusAndResponse).to.eql(expectedResponse)
             })
             var number = 1232
-            utilEncoder.encodeNumber(number, function(statusAndResponse){
+            utilEncoder.encodeNumber(number, function (statusAndResponse) {
                 expect(statusAndResponse).to.eql({code: 200, response: '404d00'})
             })
-            
+
         })
     })
 })

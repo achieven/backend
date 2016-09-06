@@ -8,8 +8,8 @@ var Colu = require('colu'),
     bodyParser = require('body-parser'),
     request = require('request'),
     util = require('./util/util.js'),
-    utilColuFunctions = util.coluCalls,
-    utilEncoder = util.encoder;
+    utilColuFunctions = util.processRequests.coluCalls,
+    utilEncoder = util.processRequests.encoder;
 var async = require('async')
 
 
@@ -37,12 +37,13 @@ colu.on('connect', function () {
 
     function sendResponse(res, statusAndResponse) {
         res.status(statusAndResponse.code).send(statusAndResponse.response);
+        return statusAndResponse
     }
 
     app.get('/assets', function (req, res, next) {
         // next('blah blah')
         utilColuFunctions.getAssets(colu, function(statusAndResponse){
-            sendResponse(res, statusAndResponse)
+            return sendResponse(res, statusAndResponse)
         });
     });
 
@@ -58,7 +59,7 @@ colu.on('connect', function () {
         // res.send('aaa')
         //console.log('###',res)
         else utilColuFunctions.issueAssets(colu, req.body.assets, function (statusAndResponse) {
-            sendResponse(res, statusAndResponse)
+            return sendResponse(res, statusAndResponse)
         })
     });
 
@@ -71,7 +72,7 @@ colu.on('connect', function () {
             })
         }
         else utilColuFunctions.sendAsset(colu, {toAddress: req.body.toAddress, assetId: req.body.assetId, amount: req.body.amount} , function (statusAndResponse) {
-            sendResponse(res, statusAndResponse)
+            return sendResponse(res, statusAndResponse)
         })
     });
 
@@ -85,7 +86,7 @@ colu.on('connect', function () {
             })
         }
         util.encoder.encodeNumber(req.body.number, function (statusAndResponse) {
-            sendResponse(res, statusAndResponse)
+            return sendResponse(res, statusAndResponse)
         })
         // util.encoder.encodeNumber(req.body)
         // var number = parseInt(req.body.number);

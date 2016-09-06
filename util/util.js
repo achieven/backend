@@ -1,226 +1,176 @@
-var validationErrorMessage = 'Validation error';
-var validationErrorCode = 400
-var integerRegex = /^\+?(0|[1-9]\d*)$/
-var statuses = require('body-parser/node_modules/http-errors/node_modules/statuses/codes.json')
-var pubsub = require('pubsub-js')
-var async = require('async')
-var Util = {
-    coluCalls: {
-        validateIssueAssets: function (inputAssets) {
-            var errorCode
-            var errorResponse
-            var inputAssetsReadyForAction = []
-            if (!Array.isArray(inputAssets)) {
-                errorCode = validationErrorCode
-                errorResponse = {
-                    code: validationErrorCode,
-                    message: validationErrorMessage,
-                    explanation: 'input assets is not an array'
-                }
+const validationErrorMessage = 'Validation error';
+const validationErrorCode = 400
+const nonNegativeIntegerRegex = /^\d+$/
+const alphanumericNotEmptyRegex = /^[a-z0-9]+$/i
+const statuses = require('body-parser/node_modules/http-errors/node_modules/statuses/codes.json')
+const async = require('async')
+
+var validations = {
+    validateColuGeneratedString: function (key, value, optionalPrefix) {
+        optionalPrefix = optionalPrefix || ''
+        var errorCode, errorResponse
+        if (!(typeof  value === 'string') || !alphanumericNotEmptyRegex.test(value)) {
+            errorCode = validationErrorCode
+            errorResponse = optionalPrefix + key + ' is not valid, use non empty alphanumeric string'
+        }
+        return errorCode ? {errorCode: errorCode, errorResponse: errorResponse} : undefined
+    },
+    validateNumber: function (key, value, minLimit, maxLimit, optionalPrefix) {
+        optionalPrefix = optionalPrefix || ''
+        var errorCode, errorResponse
+        if (typeof value === 'symbol' || !nonNegativeIntegerRegex.test(value) || parseInt(value) > maxLimit || parseInt(value) < minLimit) {
+            errorCode = validationErrorCode
+            errorResponse = optionalPrefix + key + ' should be an integer between ' + minLimit + ' and ' + maxLimit
+        }
+        return errorCode ? {errorCode: errorCode, errorResponse: errorResponse} : undefined
+    },
+    validateArray: function (inputArray, optionalPrefix) {
+        optionalPrefix = optionalPrefix || ''
+        var errorCode, errorResponse
+        if (!Array.isArray(inputArray) || inputArray.length === 0) {
+            errorCode = validationErrorCode
+            errorResponse = optionalPrefix + 'should be an array with properties in it'
+        }
+        return errorCode ? {errorCode: errorCode, errorResponse: errorResponse} : undefined
+    },
+    validateObject: function (value, optionalPrefix) {
+        optionalPrefix = optionalPrefix || ''
+        var errorCode, errorResponse
+        if (!(Object.prototype.toString.call(value) === '[object Object]')) {
+            errorCode = validationErrorCode
+            errorResponse = optionalPrefix + 'should be an Object'
+        }
+        return errorCode ? {errorCode: errorCode, errorResponse: errorResponse} : undefined
+    },
+    validateIssueAssets: function (inputAssets) {
+        var self = this
+        var errorCodeAndResponse
+        var inputAssetsReadyForAction = []
+        var errorCodeAndResponse = self.validateArray(inputAssets);
+        !errorCodeAndResponse && inputAssets.some(function validateAssetInput(asset, index) {
+            if (errorCodeAndResponse) return true
+            errorCodeAndResponse = self.validateObject(asset, 'input assets at ' + index + ', ')
+            if (!errorCodeAndResponse) errorCodeAndResponse = self.validateNumber('amount', asset.amount, 0, Math.pow(2, 54) - 2, 'input assets at ' + index + ', ')
+            //console.log('!!!',asset, errorCodeAndResponse)
+            if (!errorCodeAndResponse) {
+                inputAssetsReadyForAction.push({
+                    amount: asset.amount,
+                    metadata: {
+                        assetName: asset.assetName
+                    }
+                })
             }
-            else if (inputAssets.length === 0) {
-                errorCode = validationErrorCode
-                errorResponse = {
-                    code: validationErrorCode,
-                    message: validationErrorMessage,
-                    explanation: 'input assets has length of 0, there is nothing to issue'
-                }
-            }
-            !errorCode && inputAssets.some(function validateAssetInput(asset, index) {
-                if (!(Object.prototype.toString.call(asset) === '[object Object]')) {
-                    errorCode = validationErrorCode
-                    errorResponse = {
-                        code: validationErrorCode,
-                        message: validationErrorMessage,
-                        explanation: 'input assets at ' + index + ' is not an Object'
-                    }
-                }
-                else if (!asset.hasOwnProperty('amount')) {
-                    errorCode = validationErrorCode
-                    errorResponse = {
-                        code: validationErrorCode,
-                        message: validationErrorMessage,
-                        explanation: 'input assets at ' + index + ', amount is not specified'
-                    }
-                }
-                else if (!integerRegex.test(asset.amount) || parseInt(asset.amount) >= Math.pow(2, 54) - 1 || parseInt(asset.amount) <= 0) {
-                    errorCode = validationErrorCode
-                    errorResponse = {
-                        code: validationErrorCode,
-                        message: validationErrorMessage,
-                        explanation: 'input assets at ' + index + ', amount should be an integer between 1 and (2^54)-2'
-                    }
-                }
-                else {
-                    inputAssetsReadyForAction.push({
-                        amount: asset.amount,
-                        metadata: {
-                            assetName: asset.assetName
-                        }
-                    })
-                }
-                if (errorCode) return true
-            })
-            return {
-                errorCode: errorCode,
-                errorResponse: errorResponse,
-                inputAssetsReadyForAction: inputAssetsReadyForAction
-            };
-        },
-        validateSendAsset: function (body) {
-            var errorCode
-            var errorResponse
-            for (var key in body) {
-                if (errorCode) break
-                var value = body[key]
+
+            if (errorCodeAndResponse) return true
+        })
+        return errorCodeAndResponse || inputAssetsReadyForAction
+    },
+    validateSendAsset: function (sendAssetProperties) {
+        var errorCodeAndResponse = validations.validateObject(sendAssetProperties)
+        if(!errorCodeAndResponse) {
+            for (var key in sendAssetProperties) {
+                if (errorCodeAndResponse) break
+                var value = sendAssetProperties[key]
                 switch (key) {
                     case 'toAddress':
-                        if (!(typeof  value === 'string')) {
-                            errorCode = validationErrorCode
-                            errorResponse = {
-                                code: validationErrorCode,
-                                message: validationErrorMessage,
-                                explanation: key + ' is not a string'
-                            }
-                        }
-                        else if (value.length === 0) {
-                            errorCode = validationErrorCode
-                            errorResponse = {
-                                code: validationErrorCode,
-                                message: validationErrorMessage,
-                                explanation: key + ' has length of 0'
-                            }
-                        }
-                        else if (value.indexOf(' ') >= 0) {
-                            errorCode = validationErrorCode
-                            errorResponse = {
-                                code: validationErrorCode,
-                                message: validationErrorMessage,
-                                explanation: key + ' has spaces in it, cannot be a valid address'
-                            }
-                        }
+                        errorCodeAndResponse = this.validateColuGeneratedString(key, value);
                         break
                     case 'assetId':
-                        if (!(typeof  value === 'string')) {
-                            errorCode = validationErrorCode
-                            errorResponse = {
-                                code: validationErrorCode,
-                                message: validationErrorMessage,
-                                explanation: key + ' is not a string'
-                            }
-                        }
-                        else if (value.length === 0) {
-                            errorCode = validationErrorCode
-                            errorResponse = {
-                                code: validationErrorCode,
-                                message: validationErrorMessage,
-                                explanation: key + ' has length of 0'
-                            }
-                        }
-                        else if (value.indexOf(' ') >= 0) {
-                            errorCode = validationErrorCode
-                            errorResponse = {
-                                code: validationErrorCode,
-                                message: validationErrorMessage,
-                                explanation: key + ' has spaces in it, cannot be a valid assetId'
-                            }
-                        }
+                        errorCodeAndResponse = this.validateColuGeneratedString(key, value);
                         break
                     case 'amount':
-                        if (!integerRegex.test(value) || parseInt(value) >= Math.pow(2, 54) - 1 || parseInt(value) <= 0) {
-                            errorCode = validationErrorCode
-                            errorResponse = {
-                                code: validationErrorCode,
-                                message: validationErrorMessage,
-                                explanation: key + ' should be an integer between 1 and (2^54)-2'
-                            }
-                        }
+                        errorCodeAndResponse = this.validateNumber(key, value, 0, Math.pow(2, 54) - 2)
                         break
                     default:
                         break
                 }
             }
-            return {errorCode: errorCode, errorResponse: errorResponse};
-        },
-        returnResponse: function(err, results, sendResponse){
-            if (err) return sendResponse( {code: err.code in statuses ? err.code : 500, response: err})
+        }
+        return errorCodeAndResponse
+    },
+}
+
+var processRequests = {
+    coluCalls: {
+        determineStatusAndResponse: function (err, results, sendResponse) {
+            if (err) return sendResponse({code: err.code in statuses ? err.code : 500, response: err})
             return sendResponse({code: 200, response: results})
         },
-        getAssets: function (colu, sendResponse) {
+        getAssets: function (colu, sendResponse) {//not distinct!!
             var self = this
             async.waterfall(
                 [
                     function (callback) {
+                        var assetsIdsSet = new Set()
                         colu.getAssets(function (err, assets) {// case of success
-                            if (err) return callback({code: err.code in statuses ? err.code : 500, response: err})
+                            if (err) return callback(err)
                             var assetsIds = [];
                             assets && assets.forEach(function (asset) {
-                                assetsIds.push(asset.assetId);
+                                var assetId = asset.assetId
+                                if(!assetsIdsSet.has(assetId)){
+                                    assetsIdsSet.add(assetId)
+                                    assetsIds.push(assetId)
+                                }
                             });
                             return callback(null, assetsIds);
 
                         });
                     }
                 ],
-                function(err, results){
-                    return self.returnResponse(err, results, sendResponse)
+                function (err, results) {
+                    return self.determineStatusAndResponse(err, results, sendResponse)
                 }
-                
             )
-
         },
         issueAssets: function (colu, inputAssets, sendResponse) {
-            var response = this.validateIssueAssets(inputAssets);
-            var errorCode = response.errorCode;
-            var errorResponse = response.errorResponse;
-            var inputAssetsReadyForAction = response.inputAssetsReadyForAction;
-            if (errorCode) return sendResponse({code: errorCode, response: errorResponse})
-            console.log(inputAssetsReadyForAction)
-            var allFunctions = []
-            inputAssetsReadyForAction.forEach(function (assetToIssue) {
+            var response = validations.validateIssueAssets(inputAssets);
+            if (response.errorCode) return sendResponse({code: response.errorCode, response: response.errorResponse})
+            var inputAssetsReadyForAction = response;
+            //console.log(inputAssetsReadyForAction)
+            var issueAssetsAndPrepareResponse = []
+            //console.log('$$$', inputAssetsReadyForAction)
+            inputAssetsReadyForAction.forEach(function (assetToIssue, index) {
                 var issueAndGetAssetMetadata = function (callback) {
                     colu.issueAsset(assetToIssue, function (err, assetObject) {
-                        console.log('$$$', assetObject)
+                        //if(!err) console.log('%%%', assetObject.issueAddress,assetObject.assetId)
                         if (err) return callback(err)
                         colu.coloredCoins.getAssetMetadata(assetObject.assetId, assetObject.txid + ':0', function (err, assetData) {
                             if (err) return callback(err)
-                            console.log('%%%', assetData)
-                            var assetName = assetData.metadataOfIssuence.data.assetName
                             var assetId = assetData.assetId
-                            //console.log(assetName, assetId)
+                            
                             return callback(null, assetId)
                         })
                     })
                 }
-                allFunctions.push(issueAndGetAssetMetadata)
+                issueAssetsAndPrepareResponse.push(issueAndGetAssetMetadata)
             })
             var finishedAll = function (err, results) {
-                console.log(results)
+                //console.log(results)
                 var response = []
-                var status = 200
+                var code = 200
                 results.forEach(function (result) {
                     if (result.value) {
                         response.push(result.value)
                     }
                     else {
-                        status = result.error && result.error.code in statuses ? result.error.code : result.error && result.error.message && result.error.message.status in statuses ? result.error.message.status : 500
+                        code = result.error && result.error.code in statuses ? result.error.code : result.error && result.error.message && result.error.message.status in statuses ? result.error.message.status : 500
                         response.push(result.error)
                     }
                 })
-                return sendResponse({code: status, response: response})
+                return sendResponse({code: code, response: response})
             }
-
             async.parallel(
-                async.reflectAll(allFunctions),
+                async.reflectAll(issueAssetsAndPrepareResponse),
                 finishedAll
             )
         },
-        sendAsset: function (colu, body, sendResponse) {
+        sendAsset: function (colu, addressAssetIdAndAmount, sendResponse) {
             var self = this
-            var errorCodeAndResponse = this.validateSendAsset(body);
-            var errorCode = errorCodeAndResponse.errorCode;
-            var errorResponse = errorCodeAndResponse.errorResponse;
-            if (errorCode) return sendResponse({code: errorCode, response: errorResponse})
+            var errorCodeAndResponse = validations.validateSendAsset(addressAssetIdAndAmount);
+            if (errorCodeAndResponse) return sendResponse({
+                code: errorCodeAndResponse.errorCode,
+                response: errorCodeAndResponse.errorResponse
+            })
 
             async.waterfall(
                 [
@@ -241,8 +191,7 @@ var Util = {
                         })
                     },
                     function (localWalletAddresses, callback) {
-                        colu.coloredCoins.getStakeHolders(body.assetId, function (err, assetHolders) {
-                            //console.log('###',assetHolders)
+                        colu.coloredCoins.getStakeHolders(addressAssetIdAndAmount.assetId, function (err, assetHolders) {
                             var assetsIdsAndAmounts = []
                             var from = [];
                             if (err) return callback(err)
@@ -260,14 +209,14 @@ var Util = {
                                         from.push(assetHolder.address)
                                     }
                                 })
-                                // if (sumAllAmountsOfAssetInWallet < body.amount) {
+                                // if (sumAllAmountsOfAssetInWallet < addressAssetIdAndAmount.amount) {
                                 //     return callback({
                                 //         code: 500, response: {
                                 //             code: 20004,
                                 //             status: 500,
                                 //             name: 'NotEnoughAssetsError',
                                 //             message: 'Not enough assets to cover transfer transaction',
-                                //             asset: body.assetId
+                                //             asset: addressAssetIdAndAmount.assetId
                                 //         }
                                 //     })
                                 // }
@@ -276,7 +225,7 @@ var Util = {
                         })
                     },
                     function (from, callback) {
-                        colu.coloredCoins.getAddressInfo(body.toAddress, function (err, addressInfo) {
+                        colu.coloredCoins.getAddressInfo(addressAssetIdAndAmount.toAddress, function (err, addressInfo) {
                             //console.log(err, addressInfo)
                             if (err) return callback(err)
                             if (!Array.isArray(addressInfo.utxos) || addressInfo.utxos.length === 0)
@@ -285,28 +234,28 @@ var Util = {
                         })
                     },
                     function (from, callback) {
-                        var to = [{address: body.toAddress, assetId: body.assetId, amount: body.amount}]
+                        var to = [{address: addressAssetIdAndAmount.toAddress, assetId: addressAssetIdAndAmount.assetId, amount: addressAssetIdAndAmount.amount}]
                         var args = {from: from, to: to};
                         colu.sendAsset(args, function (err, sentAsset) {
                             if (err) return callback(err)
                             //test:
-                            colu.getAssets(function (err, assets) {
-                                console.log('asset in wallet: ')
-                                assets.forEach(function (asset) {
-                                    console.log(asset.address, asset.amount, asset.assetId)
-                                })
-                                colu.coloredCoins.getStakeHolders(body.assetId, function (err, assetHolders) {
-                                    console.log('asset everywhere: ')
-                                    assetHolders.holders.forEach(function (assetHolder) {
-                                        console.log(assetHolder.address, assetHolder.amount)
-                                    })
-                                })
-                            })
+                            // colu.getAssets(function (err, assets) {
+                            //     console.log('asset in wallet: ')
+                            //     assets.forEach(function (asset) {
+                            //         console.log(asset.address, asset.amount, asset.assetId)
+                            //     })
+                            //     colu.coloredCoins.getStakeHolders(body.assetId, function (err, assetHolders) {
+                            //         console.log('asset everywhere: ')
+                            //         assetHolders.holders.forEach(function (assetHolder) {
+                            //             console.log(assetHolder.address, assetHolder.amount)
+                            //         })
+                            //     })
+                            // })
                             return callback(null, sentAsset.financeTxid)//or txid, need to see what;s the difference!
                         })
                     }
                 ], function (err, results) {
-                    return self.returnResponse(err, results, sendResponse)
+                    return self.determineStatusAndResponse(err, results, sendResponse)
                     //console.log(err, financeTxid)
                     // if (err) return sendResponse({code: err.code in statuses ? err.code : 500, response: err})
                     // sendResponse({code: 200, response: results})
@@ -367,7 +316,7 @@ var Util = {
             }
             else {
                 var significantDigits = mantisDecimal.toString().length;
-                while (!this.signMantisExponentTable[significantDigits] && significantDigits <=17) {
+                while (!this.signMantisExponentTable[significantDigits] && significantDigits <= 17) {
                     significantDigits++;
                 }
                 return significantDigits.toString();
@@ -396,7 +345,6 @@ var Util = {
         encodeFullNumber: function (number) {
             var mantisAndExponentDecimal = this.calculateMantisExponentDecimal(number);
             var mantisDecimal = mantisAndExponentDecimal.mantisDecimal;
-           
             var exponentDecimal = mantisAndExponentDecimal.exponentDecimal;
 
             var mantisBinaryWithoutZeros = mantisDecimal.toString(2);
@@ -414,23 +362,17 @@ var Util = {
             return fullHexRepresentation
         },
         encodeNumber: function (number, sendResponse) {
-            if (!integerRegex.test(number) || parseInt(number) > Number.MAX_SAFE_INTEGER) {
-                return sendResponse({
-                    code: validationErrorCode,
-                    response: {
-                        code: validationErrorCode,
-                        message: validationErrorMessage,
-                        explanation: 'number should be an integer between 0 and (2^53)-1 (Number.MAX_SAFE_INTEGER)'
-                    }
-                })
+            var errorCodeAndResponse = validations.validateNumber('number', number, 0, Number.MAX_SAFE_INTEGER)
+            if(!errorCodeAndResponse){
+                var response = this.encodeFullNumber(parseInt(number))
+                return sendResponse({code: 200, response: response})
             }
-            var response = this.encodeFullNumber(parseInt(number))
-            if(response.code) return sendResponse(response)
-            return sendResponse({code: 200, response: response})
+            return sendResponse({code: errorCodeAndResponse.errorCode, response: errorCodeAndResponse.errorResponse})
         },
     }
 }
-module.exports = Util;
+module.exports.processRequests = processRequests
+module.exports.validations = validations
 
 
 // async.each(
