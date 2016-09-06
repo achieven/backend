@@ -372,7 +372,8 @@ describe('Test utilColuFunctions', function () {
         var settings = {
             network: 'testnet',
             events: true,
-            eventsSecure: true
+            eventsSecure: true,
+            privateSeed: process.env.COLU_SDK_PRIVATE_SEED
         }
         colu = new Colu(settings)
         colu.on('connect', done)
