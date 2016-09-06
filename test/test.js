@@ -648,6 +648,7 @@ describe('Test utilColuFunctions', function () {
                                         amount: 25
                                     }
                                     var receiverAddressAndAmount = {address: validAssetAddress, amount: 75}
+                                    console.log(secondTimeAssetHolders.holders)
                                     expect(secondTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
                                     var assetTransferedCorrectly = JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption1)) > -1 ||
                                         JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption2)) > -1
@@ -885,11 +886,5 @@ describe('utilEncoder', function () {
         })
     })
 })
-
-
-// else {
-//     expect(parseInt(currEncodedNumber, 16)).to.equal(parseInt(prevEncodedNumber, 16)+parseInt(20, 16))
-// }
-
 
 

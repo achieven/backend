@@ -6,7 +6,6 @@ var Colu = require('colu'),
     fs = require('fs'),
     Handlebars = require('handlebars'),
     bodyParser = require('body-parser'),
-    request = require('request'),
     util = require('./util/util.js'),
     utilColuFunctions = util.processRequests.coluCalls,
     utilEncoder = util.processRequests.encoder;
@@ -85,7 +84,7 @@ colu.on('connect', function () {
                 explanation: 'req.body is not defined properly'
             })
         }
-        util.encoder.encodeNumber(req.body.number, function (statusAndResponse) {
+        utilEncoder.encodeNumber(req.body.number, function (statusAndResponse) {
             return sendResponse(res, statusAndResponse)
         })
         // util.encoder.encodeNumber(req.body)
