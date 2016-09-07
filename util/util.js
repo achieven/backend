@@ -56,7 +56,6 @@ var validations = {
         var inputAssetsReadyForAction = []
         var errorCodeAndResponse = self.validateArray(inputAssets);
         !errorCodeAndResponse && inputAssets.some(function validateAssetInput(asset, index) {
-            if (errorCodeAndResponse) return true
             errorCodeAndResponse = self.validateObject(asset, 'input assets at ' + index + ', ')
             if (!errorCodeAndResponse) errorCodeAndResponse = self.validateNumber('amount', asset.amount, 0, Math.pow(2, 54) - 2, 'input assets at ' + index + ', ')
             if (!errorCodeAndResponse) errorCodeAndResponse = self.validateAssetName(asset.assetName, 'input assets at ' + index + ', ')
@@ -108,9 +107,10 @@ var processRequests = {
             async.waterfall(
                 [
                     function (callback) {
-                        var assetsIdsSet = new Set()
                         colu.getAssets(function (err, assets) {
                             if (err) return callback(err)
+                            console.log(assets)
+                            var assetsIdsSet = new Set()
                             var assetsIds = [];
                             assets && assets.forEach(function (asset) {
                                 var assetId = asset.assetId
@@ -120,7 +120,6 @@ var processRequests = {
                                 }
                             });
                             return callback(null, assetsIds);
-
                         });
                     }
                 ],
@@ -141,7 +140,7 @@ var processRequests = {
                         colu.coloredCoins.getAssetMetadata(assetObject.assetId, assetObject.txid + ':0', function (err, assetData) {
                             if (err) return callback(err)
                             var assetId = assetData.assetId
-                            console.log(assetData)
+                            console.log(assetId, assetData.issueAddress)
                             return callback(null, assetId)
                         })
                     })
@@ -170,7 +169,7 @@ var processRequests = {
         sendAsset: function (colu, addressAssetIdAndAmount, sendResponse) {
             var self = this
             var errorCodeAndResponse = validations.validateSendAsset(addressAssetIdAndAmount);
-            if (errorCodeAndResponse.errorCode) return sendResponse({code: errorCodeAndResponse.errorCode, response: errorCodeAndResponse.errorResponse})
+            if (errorCodeAndResponse) return sendResponse({code: errorCodeAndResponse.errorCode, response: errorCodeAndResponse.errorResponse})
 
             async.waterfall(
                 [
@@ -229,7 +228,7 @@ var processRequests = {
                         var args = {from: from, to: to};
                         colu.sendAsset(args, function (err, sentAsset) {
                             if (err) return callback(err)
-                            return callback(null, sentAsset.financeTxid)//or txid, need to see what;s the difference!
+                            return callback(null, sentAsset.txid)
                         })
                     }
                 ],

@@ -37,8 +37,9 @@ colu.on('connect', function () {
                 message: 'no req.body',
                 explanation: 'req.body is not defined properly'
             })
-            return true
+            return false
         }
+        return true
     }
 
     function sendResponse(res, statusAndResponse) {
@@ -53,7 +54,7 @@ colu.on('connect', function () {
     });
 
     app.put('/issue', function (req, res) {// this function assumes that client sends content-type 'application/json'
-        if(!validateBody(req, res)) {
+        if(validateBody(req, res)) {
             utilColuFunctions.issueAssets(colu, req.body.assets, function (statusAndResponse) {
                 return sendResponse(res, statusAndResponse)
             })
@@ -61,7 +62,7 @@ colu.on('connect', function () {
     });
 
     app.post('/send', function (req, res) {
-        if(!validateBody(req, res)) {
+        if(validateBody(req, res)) {
             utilColuFunctions.sendAsset(colu, {
                 toAddress: req.body.toAddress,
                 assetId: req.body.assetId,
@@ -74,7 +75,7 @@ colu.on('connect', function () {
 
 
     app.post('/encode', function (req, res) {
-        if(!validateBody(req, res)) {
+        if(validateBody(req, res)) {
             utilEncoder.encodeNumber(req.body.number, function (statusAndResponse) {
                 return sendResponse(res, statusAndResponse)
             })

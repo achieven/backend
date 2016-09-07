@@ -57,7 +57,7 @@
 
     $('#issue').on('submit', function (e) {
         e.preventDefault();
-        var data = [{assetName: undefined, amount: 100},{assetName: 'achi1', amount: 100}];
+        var data = [{assetName: '', amount: 100, something: true},{assetName: 'achi1', amount: 100}];
         console.log(JSON.stringify(data));
         $.ajax({
             type: 'put',
@@ -72,7 +72,7 @@
 
     $('#send').on('submit', function (e) {
         e.preventDefault();
-        var data = {toAddress: $('.toAddress').val(), assetId: $('.assetId').val(), amount: $('.amount').val()};
+        var data = {toAddress: $('.toAddress').val(), assetId: $('.assetId').val(), amount: $('.amount').val(), something: 'sdfg'};
         console.log(JSON.stringify(data));
         $.ajax({
             type: 'post',

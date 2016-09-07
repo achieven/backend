@@ -7,14 +7,13 @@ const util = require('../util/util.js')
 const alphanumericNotEmptyRegex = /^[a-z0-9]+$/i
 
 describe('Test utilColuFunctions', function () {
-
-
+    
     var colu
     const utilColuFunctions = util.processRequests.coluCalls
     const validations = util.validations
 
     describe('validateColuGeneratedString', function () {
-        it('should return error 400 with message saying "<property> is not valid, use non empty alphanumeric string" when property isnt string or not only alphanumeric', function () {
+        it('should return error 400 with message saying "<property> is not valid, use non empty alphanumeric string" when property isnt string or empty or not only alphanumeric', function () {
             var key = 'some property'
             var optionalPrefix = ''
             var expectedResponse = {
@@ -62,7 +61,6 @@ describe('Test utilColuFunctions', function () {
             observedResponse = validations.validateColuGeneratedString(key, value, 'prefix ')
             expect(observedResponse.errorCode).to.be.equal(expectedResponse.errorCode)
             expect(observedResponse.errorResponse).to.be.equal('prefix ' + expectedResponse.errorResponse)
-
         })
         it('should return undefined when the property is a string with no spaces and not empty', function () {
             var key = 'some property'
@@ -239,8 +237,8 @@ describe('Test utilColuFunctions', function () {
         })
     })
 
-    describe('validateAssetName', function(){
-        it('should return error 400 saying "input assets at <index>, assetName should be a string" when assetName is not a string', function(){
+    describe('validateAssetName', function () {
+        it('should return error 400 saying "input assets at <index>, assetName should be a string" when assetName is not a string', function () {
             var optionalPrefix = ''
             var expectedResponse = {errorCode: validationErrorCode, errorResponse: 'assetName should be a string'}
             var assetName
@@ -277,10 +275,10 @@ describe('Test utilColuFunctions', function () {
             observedResponse = validations.validateAssetName(assetName, optionalPrefix)
             expect(observedResponse).to.eql(expectedResponse)
         })
-        it('should return undefined when assetName is a string (of any length)', function(){
+        it('should return undefined when assetName is a string (of any length)', function () {
             var optionalPrefix = ''
             var assetName
-            
+
             assetName = ''
             observedResponse = validations.validateAssetName(assetName, optionalPrefix)
             expect(observedResponse).to.be.undefined
@@ -291,7 +289,10 @@ describe('Test utilColuFunctions', function () {
     })
     describe('validateIssueAssets', function () {
         var
-            validAsset1 = {amount: 100, assetName: 'yosi'}, validAsset2 = {amount: 100, assetName: 'achi'}, validAsset3 = {
+            validAsset1 = {amount: 100, assetName: 'yosi'}, validAsset2 = {
+                amount: 100,
+                assetName: 'achi'
+            }, validAsset3 = {
                 amount: 100,
                 assetName: 'avi'
             }
@@ -335,16 +336,21 @@ describe('Test utilColuFunctions', function () {
             observedResponse = validations.validateIssueAssets(inputAssets)
             expect(observedResponse).to.eql(expectedResponse)
         })
-        it('should return array of objects, each has amount and assetName if each property in the array is an object and has "amount" property', function () {
+        it('should return array of objects, each has amount and metadata with assetName, if each property in the array is an object and has valid amount according to "validateNumber" and valid assetName according to "validateAssetName', function () {
             var inputAssets
             var expectedResponse
             var observedResponse
 
-            inputAssets = [validAsset1, validAsset2, validAsset3]
+            inputAssets = [validAsset1, validAsset2, validAsset3, {
+                amount: 100,
+                assetName: 'd',
+                otherProperty: 'something'
+            }]
             expectedResponse = [
                 {amount: validAsset1.amount, metadata: {assetName: validAsset1.assetName}},
                 {amount: validAsset2.amount, metadata: {assetName: validAsset2.assetName}},
-                {amount: validAsset3.amount, metadata: {assetName: validAsset3.assetName}}
+                {amount: validAsset3.amount, metadata: {assetName: validAsset3.assetName}},
+                {amount: 100, metadata: {assetName: 'd'}}
             ]
             observedResponse = validations.validateIssueAssets(inputAssets)
             expect(observedResponse).to.eql(expectedResponse)
@@ -386,7 +392,12 @@ describe('Test utilColuFunctions', function () {
             expect(observedResponse).to.eql(expectedResponse)
         })
         it('should return undefined if sendAssetProperties is an object that contains properties toAddress, assetId & amount', function () {
-            var sendAssetProperties = {toAddress: validToAddress, assetId: validAssetId, amount: validAmount}
+            var sendAssetProperties = {
+                toAddress: validToAddress,
+                assetId: validAssetId,
+                amount: validAmount,
+                otherProperty: 'something'
+            }
             var observedResponse = validations.validateSendAsset(sendAssetProperties)
             expect(observedResponse).to.be.undefined
         })
@@ -417,7 +428,7 @@ describe('Test utilColuFunctions', function () {
     })
 
 
-    before(function (done) {/// error something with 2000
+    before(function (done) {
         this.timeout(10000)
         var settings = {
             network: 'testnet',
@@ -458,7 +469,7 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return distinct list of assets when colus getAssets function returns duplicate assets', function (done) {
-            this.timeout(20000)
+            this.timeout(30000)
             colu.issueAsset({amount: 2}, function (err, firstAsset) {
                 colu.issueAsset({amount: 2}, function (err, secondAsset) {
                     var to = [{
@@ -467,14 +478,17 @@ describe('Test utilColuFunctions', function () {
                         amount: 1
                     }]
                     var from = [firstAsset.issueAddress]
-                    colu.sendAsset({from:from, to:to}, function (err, sentAsset) {
-                        colu.getAssets(function(err, assets){
-                            var assetsIdsWithDuplicates = []//reomve
-                            assets.forEach(function(asset){
+                    colu.sendAsset({from: from, to: to}, function (err, sentAsset) {
+                        colu.getAssets(function (err, assets) {
+                            var assetsIdsWithDuplicates = []
+                            assets.forEach(function (asset) {
                                 assetsIdsWithDuplicates.push(asset.assetId)
                             })
                             var assetsIdsWithoutDuplicates = Array.from(new Set(assetsIdsWithDuplicates))
-                            expect(assetsIdsWithoutDuplicates.length).to.equal(assetsIdsWithDuplicates.length-1)
+                            expect(assetsIdsWithoutDuplicates.length).to.equal(assetsIdsWithDuplicates.length - 1)
+                            assetsIdsWithoutDuplicates.forEach(function(assetIdNoDuplicates){
+                                expect(assetsIdsWithDuplicates).to.include(assetIdNoDuplicates)
+                            })
                             utilColuFunctions.getAssets(colu, function (statusAndResponse) {
                                 var statusAndResponseUnique = Array.from(new Set(statusAndResponse.response))
                                 expect(statusAndResponse).to.be.a('object')
@@ -491,11 +505,15 @@ describe('Test utilColuFunctions', function () {
     })
 
     describe('issueAssets', function () {
-        var validAssetToIssue1 = {amount: 100, assetName: 'achi'}, validAssetToIssue2 = {
-            amount: 100,
-            assetName: 'yosi'
-        }, validAssetToIssue3 = {amount: 100, assetName: 'micha'}
+        var validAssetToIssue1 = {amount: 100, assetName: 'a'},
+            validAssetToIssue2 = {amount: 100, assetName: 'b'},
+            validAssetToIssue3 = {amount: 100, assetName: 'c'},
+            validAssetToIssue4 = {amount: 100, assetName: 'd'},
+            validAssetToIssue5 = {amount: 100, assetName: 'e'},
+            validAssetToIssue6 = {amount: 100, assetName: 'f'},
+            validAssetToIssue7 = {amount: 100, assetName: 'g'}
         it('should return error if not passing validation', function (done) {
+            this.timeout(5000)
             var inputAssets = [validAssetToIssue1, {}]
             utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
                 var expectedResponse = {
@@ -506,15 +524,16 @@ describe('Test utilColuFunctions', function () {
                 done()
             })
         })
-        
+
         it('should return an array with assetsIds and same order as input and status 200 when all input assets are valid', function (done) {
-            this.timeout(90000);
-            var inputAssets = [validAssetToIssue1, validAssetToIssue2, validAssetToIssue3]
+            this.timeout(30000);
+            var inputAssets = [validAssetToIssue1, validAssetToIssue2, validAssetToIssue3,
+                validAssetToIssue4, validAssetToIssue5, validAssetToIssue6, validAssetToIssue7]
             utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
                 expect(statusAndResponse).to.be.a('object');
                 expect(statusAndResponse.code).to.be.equal(200);
                 expect(statusAndResponse.response).to.be.a('array');
-                expect(statusAndResponse.response.length).to.be.equal(3);
+                expect(statusAndResponse.response.length).to.be.equal(5);
                 var finishedGettingAssetData = 0
                 statusAndResponse.response.forEach(function (assetId, index) {
                     colu.coloredCoins.getAssetData({assetId: assetId}, function (err, assetData) {
@@ -529,12 +548,19 @@ describe('Test utilColuFunctions', function () {
                 })
             })
         })
-        it('should return an array with errors and assets ids with same order as input when some have errors', function (done) {
-            this.timeout(120000);
-            var inputAssetsReadyForAction = [{metadata: {assetName: 'a'}, amount: 100}, {
-                metadata: {assetName: 'b'},
-                amount: -1
-            }, {metadata: {assetName: 'c'}, amount: 300}]
+        it('should return an array with errors and assets ids with same order as input along with the first error code when some requests encounter an error', function (done) {
+            this.timeout(40000);
+            var inputAssetsReadyForAction = [
+                {metadata: {assetName: 'a'}, amount: 100},
+                {metadata: {assetName: 'b'}, amount: -1},
+                {metadata: {assetName: 'c'}, amount: 200},
+                {metadata: {assetName: 'd'}, amount: 1.2},
+                {metadata: {assetName: 'e'}, amount: 300},
+                {metadata: {assetName: 'f'}, amount: "adsf"},
+                {metadata: {assetName: 'g'}, amount: 400},
+                {metadata: {assetName: 'h'}, amount: true},
+                {metadata: {assetName: 'i'}, amount: 500}
+            ]
             validations.validateIssueAssets = function () {
                 return inputAssetsReadyForAction
             }
@@ -542,10 +568,10 @@ describe('Test utilColuFunctions', function () {
                 expect(statusAndResponse).to.be.a('object');
                 expect(statusAndResponse.code).to.be.equal(500);
                 expect(statusAndResponse.response).to.be.a('array');
-                expect(statusAndResponse.response.length).to.be.equal(3);
+                expect(statusAndResponse.response.length).to.be.equal(9);
                 var finishedGettingAssetData = 0
                 statusAndResponse.response.forEach(function (responseOfIssuingAsset, index) {
-                    if (index != 1) {
+                    if (index % 2 === 0) {
                         colu.coloredCoins.getAssetData({assetId: responseOfIssuingAsset}, function (err, assetData) {
                             finishedGettingAssetData++
                             expect(assetData.assetData[0].metadata.metadataOfIssuence.data.assetName).to.be.equal(inputAssetsReadyForAction[index].metadata.assetName)
@@ -556,8 +582,15 @@ describe('Test utilColuFunctions', function () {
                     }
                     else {
                         finishedGettingAssetData++
-                        expect(responseOfIssuingAsset.message).to.be.equal('Internal server error')
-                        expect(responseOfIssuingAsset.status).to.be.equal(500)
+                        if (index === 1) {
+                            expect(responseOfIssuingAsset.message).to.be.equal('Internal server error')
+                            expect(responseOfIssuingAsset.status).to.be.equal(500)
+                        }
+                        else {
+                            expect(responseOfIssuingAsset.message).to.be.equal('Validation error')
+                            expect(responseOfIssuingAsset.explanation).to.be.equal('amount is not a type of int32')
+                            expect(responseOfIssuingAsset.status).to.be.equal(400)
+                        }
                     }
                 })
             })
@@ -629,7 +662,7 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return error of "toAddress does not exist" if there is no such address anywhere', function (done) {
-            this.timeout(20000)
+            this.timeout(30000)
             colu.issueAsset({amount: 1}, function (err, asset) {
                 utilColuFunctions.sendAsset(colu, {
                     toAddress: 'noOneHoldsThisAddressCauseItDoesntExistPigsWillFlyInTheSkyBeforeThisAddressWillExist',
@@ -659,7 +692,6 @@ describe('Test utilColuFunctions', function () {
                     colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
                         var senderAddressAndAmount = {address: asset.issueAddress, amount: 0}
                         var receiverAddressAndAmount = {address: validAssetAddress, amount: 1}
-                        //expect(assetHolders.holders).to.include.deep(senderAddressAndAmount)
                         expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
                         done()
                     })
@@ -667,7 +699,7 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return success and transfer the asset from a group of addresses in the wallet if more than one address in the wallet holds this asset and all together they have enough', function (done) {
-            this.timeout(50000)
+            this.timeout(40000)
             colu.issueAsset({amount: 100}, function (err, firstIssuedAsset) {
                 colu.issueAsset({amount: 100}, function (err, secondIssuedAsset) {
                     var assetAddress = secondIssuedAsset.issueAddress
