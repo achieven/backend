@@ -238,17 +238,64 @@ describe('Test utilColuFunctions', function () {
             expect(observedResponse).to.be.undefined
         })
     })
+
+    describe('validateAssetName', function(){
+        it('should return error 400 saying "input assets at <index>, assetName should be a string" when assetName is not a string', function(){
+            var optionalPrefix = ''
+            var expectedResponse = {errorCode: validationErrorCode, errorResponse: 'assetName should be a string'}
+            var assetName
+            var observedResponse
+
+            assetName = true
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = false
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = 1
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = 0
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = Symbol()
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = null
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = undefined
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = []
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = {}
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+            assetName = new String("abc")
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.eql(expectedResponse)
+        })
+        it('should return undefined when assetName is a string (of any length)', function(){
+            var optionalPrefix = ''
+            var assetName
+            
+            assetName = ''
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+            assetName = 'Tickets to theatre'
+            observedResponse = validations.validateAssetName(assetName, optionalPrefix)
+            expect(observedResponse).to.be.undefined
+        })
+    })
     describe('validateIssueAssets', function () {
         var
-            validAsset1 = {amount: 100}, validAsset2 = {amount: 100, assetName: 'achi'}, validAsset3 = {
+            validAsset1 = {amount: 100, assetName: 'yosi'}, validAsset2 = {amount: 100, assetName: 'achi'}, validAsset3 = {
                 amount: 100,
-                assetName: []
-            },
-            validAsset4 = {amount: 100, assetName: true}, validAsset5 = {
-                amount: 100,
-                assetName: null
-            }, validAsset6 = {amount: 100, assetName: 1}
-        it('should return error 400 if inputAssets is not valid according to "validateArray" or one of the inputAssets is not an object according to "validateObject or has no valid amount according to "validateNumber"', function () {
+                assetName: 'avi'
+            }
+        it('should return error 400 if inputAssets is not valid according to "validateArray" or one of the inputAssets is not an object according to "validateObject or has no valid amount according to "validateNumber" or has no valid assetName according to "validateAssetName', function () {
             var inputAssets
             var expectedResponse
             var observedResponse
@@ -280,23 +327,26 @@ describe('Test utilColuFunctions', function () {
             }
             observedResponse = validations.validateIssueAssets(inputAssets)
             expect(observedResponse).to.eql(expectedResponse)
+            inputAssets = [validAsset2, {amount: 2}]
+            expectedResponse = {
+                errorCode: validationErrorCode,
+                errorResponse: 'input assets at 1, assetName should be a string'
+            }
+            observedResponse = validations.validateIssueAssets(inputAssets)
+            expect(observedResponse).to.eql(expectedResponse)
         })
-        it('should return array of objects, each has amount and assetName(could be anything) if each property in the array is an object and has "amount" property', function () {
+        it('should return array of objects, each has amount and assetName if each property in the array is an object and has "amount" property', function () {
             var inputAssets
             var expectedResponse
             var observedResponse
 
-            inputAssets = [validAsset1, validAsset2, validAsset3, validAsset4, validAsset5, validAsset6]
+            inputAssets = [validAsset1, validAsset2, validAsset3]
             expectedResponse = [
-                {amount: validAsset1.amount, metadata: {assetName: undefined}},
+                {amount: validAsset1.amount, metadata: {assetName: validAsset1.assetName}},
                 {amount: validAsset2.amount, metadata: {assetName: validAsset2.assetName}},
-                {amount: validAsset3.amount, metadata: {assetName: validAsset3.assetName}},
-                {amount: validAsset4.amount, metadata: {assetName: validAsset4.assetName}},
-                {amount: validAsset5.amount, metadata: {assetName: validAsset5.assetName}},
-                {amount: validAsset6.amount, metadata: {assetName: validAsset6.assetName}}
+                {amount: validAsset3.amount, metadata: {assetName: validAsset3.assetName}}
             ]
             observedResponse = validations.validateIssueAssets(inputAssets)
-            //console.log('!!!', observedResponse)
             expect(observedResponse).to.eql(expectedResponse)
         })
     })
@@ -434,7 +484,6 @@ describe('Test utilColuFunctions', function () {
                                 done()
                             })
                         })
-                        
                     })
                 })
             })
@@ -491,7 +540,6 @@ describe('Test utilColuFunctions', function () {
             }
             utilColuFunctions.issueAssets(colu, inputAssetsReadyForAction, function (statusAndResponse) {
                 expect(statusAndResponse).to.be.a('object');
-                //console.log('###', statusAndResponse)
                 expect(statusAndResponse.code).to.be.equal(500);
                 expect(statusAndResponse.response).to.be.a('array');
                 expect(statusAndResponse.response.length).to.be.equal(3);
@@ -611,7 +659,6 @@ describe('Test utilColuFunctions', function () {
                     colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
                         var senderAddressAndAmount = {address: asset.issueAddress, amount: 0}
                         var receiverAddressAndAmount = {address: validAssetAddress, amount: 1}
-                        //console.log(assetHolders.holders, senderAddressAndAmount, receiverAddressAndAmount)
                         //expect(assetHolders.holders).to.include.deep(senderAddressAndAmount)
                         expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
                         done()
@@ -649,11 +696,9 @@ describe('Test utilColuFunctions', function () {
                                         amount: 25
                                     }
                                     var receiverAddressAndAmount = {address: validAssetAddress, amount: 75}
-                                    console.log(secondTimeAssetHolders.holders)
                                     expect(secondTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
                                     var assetTransferedCorrectly = JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption1)) > -1 ||
                                         JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption2)) > -1
-                                    //console.log('JSONSTRINGIFY', JSON.stringify(secondTimeAssetHolders.holders), JSON.stringify(senderAddressAndAmountOption1), JSON.stringify(senderAddressAndAmountOption2))
                                     expect(assetTransferedCorrectly).to.be.true
                                     done()
                                 })

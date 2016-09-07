@@ -41,6 +41,15 @@ var validations = {
         }
         return errorCode ? {errorCode: errorCode, errorResponse: errorResponse} : undefined
     },
+    validateAssetName: function(assetName, optionalPrefix){
+        optionalPrefix = optionalPrefix || ''
+        var errorCode, errorResponse
+        if (!(typeof  assetName === 'string')){
+            errorCode = validationErrorCode
+            errorResponse = optionalPrefix + 'assetName should be a string'
+        }
+        return errorCode ? {errorCode: errorCode, errorResponse: errorResponse} : undefined
+    },
     validateIssueAssets: function (inputAssets) {
         var self = this
         var errorCodeAndResponse
@@ -50,6 +59,7 @@ var validations = {
             if (errorCodeAndResponse) return true
             errorCodeAndResponse = self.validateObject(asset, 'input assets at ' + index + ', ')
             if (!errorCodeAndResponse) errorCodeAndResponse = self.validateNumber('amount', asset.amount, 0, Math.pow(2, 54) - 2, 'input assets at ' + index + ', ')
+            if (!errorCodeAndResponse) errorCodeAndResponse = self.validateAssetName(asset.assetName, 'input assets at ' + index + ', ')
             if (!errorCodeAndResponse) {
                 inputAssetsReadyForAction.push({
                     amount: asset.amount,
@@ -131,7 +141,7 @@ var processRequests = {
                         colu.coloredCoins.getAssetMetadata(assetObject.assetId, assetObject.txid + ':0', function (err, assetData) {
                             if (err) return callback(err)
                             var assetId = assetData.assetId
-
+                            console.log(assetData)
                             return callback(null, assetId)
                         })
                     })
@@ -160,12 +170,7 @@ var processRequests = {
         sendAsset: function (colu, addressAssetIdAndAmount, sendResponse) {
             var self = this
             var errorCodeAndResponse = validations.validateSendAsset(addressAssetIdAndAmount);
-            if (errorCodeAndResponse) {
-                return sendResponse({
-                    code: errorCodeAndResponse.errorCode,
-                    response: errorCodeAndResponse.errorResponse
-                })
-            }
+            if (errorCodeAndResponse.errorCode) return sendResponse({code: errorCodeAndResponse.errorCode, response: errorCodeAndResponse.errorResponse})
 
             async.waterfall(
                 [

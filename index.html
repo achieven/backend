@@ -57,7 +57,7 @@
 
     $('#issue').on('submit', function (e) {
         e.preventDefault();
-        var data = [{assetName: 'achi1', amount: 100},{assetName: 'achi1', amount: 100}];
+        var data = [{assetName: undefined, amount: 100},{assetName: 'achi1', amount: 100}];
         console.log(JSON.stringify(data));
         $.ajax({
             type: 'put',
