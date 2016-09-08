@@ -57,7 +57,7 @@ var validations = {
         var errorCodeAndResponse = self.validateArray(inputAssets);
         !errorCodeAndResponse && inputAssets.some(function validateAssetInput(asset, index) {
             errorCodeAndResponse = self.validateObject(asset, 'input assets at ' + index + ', ')
-            if (!errorCodeAndResponse) errorCodeAndResponse = self.validateNumber('amount', asset.amount, 0, Math.pow(2, 54) - 2, 'input assets at ' + index + ', ')
+            if (!errorCodeAndResponse) errorCodeAndResponse = self.validateNumber('amount', asset.amount, 1, Math.pow(2, 54)-2 , 'input assets at ' + index + ', ')
             if (!errorCodeAndResponse) errorCodeAndResponse = self.validateAssetName(asset.assetName, 'input assets at ' + index + ', ')
             if (!errorCodeAndResponse) {
                 inputAssetsReadyForAction.push({
@@ -109,7 +109,6 @@ var processRequests = {
                     function (callback) {
                         colu.getAssets(function (err, assets) {
                             if (err) return callback(err)
-                            console.log(assets)
                             var assetsIdsSet = new Set()
                             var assetsIds = [];
                             assets && assets.forEach(function (asset) {
@@ -140,7 +139,6 @@ var processRequests = {
                         colu.coloredCoins.getAssetMetadata(assetObject.assetId, assetObject.txid + ':0', function (err, assetData) {
                             if (err) return callback(err)
                             var assetId = assetData.assetId
-                            console.log(assetId, assetData.issueAddress)
                             return callback(null, assetId)
                         })
                     })
@@ -275,9 +273,15 @@ var processRequests = {
             }
             var exponentDecimal = 0;
             var mantisDecimal = number;
-            while (mantisDecimal % 10 === 0) {
-                mantisDecimal /= 10;
-                exponentDecimal++;
+            
+           
+                while (mantisDecimal % 10 === 0) {
+                    mantisDecimal /= 10;
+                    exponentDecimal++;
+                }
+            if(mantisDecimal.toString().length > 12) {
+                mantisDecimal = number
+                exponentDecimal = 0
             }
             return {mantisDecimal: mantisDecimal, exponentDecimal: exponentDecimal};
         },
@@ -290,7 +294,7 @@ var processRequests = {
             }
             else {
                 var significantDigits = mantisDecimal.toString().length;
-                while (!this.signMantisExponentTable[significantDigits] && significantDigits <= 17) {
+                while (!this.signMantisExponentTable[significantDigits]) {
                     significantDigits++;
                 }
                 return significantDigits.toString();
@@ -316,7 +320,7 @@ var processRequests = {
             });
             return fullHexRepresentation;
         },
-        encodeFullNumber: function (number) {
+        encodeNumber: function (number) {
             var mantisAndExponentDecimal = this.calculateMantisExponentDecimal(number);
             var mantisDecimal = mantisAndExponentDecimal.mantisDecimal;
             var exponentDecimal = mantisAndExponentDecimal.exponentDecimal;
@@ -335,10 +339,10 @@ var processRequests = {
             var fullHexRepresentation = this.bin2hex(fullBinaryReperesentation);
             return fullHexRepresentation
         },
-        encodeNumber: function (number, sendResponse) {
+        encode: function (number, sendResponse) {
             var errorCodeAndResponse = validations.validateNumber('number', number, 0, Number.MAX_SAFE_INTEGER)
             if (!errorCodeAndResponse) {
-                var response = this.encodeFullNumber(parseInt(number))
+                var response = this.encodeNumber(parseInt(number))
                 return sendResponse({code: 200, response: response})
             }
             return sendResponse({code: errorCodeAndResponse.errorCode, response: errorCodeAndResponse.errorResponse})

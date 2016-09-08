@@ -76,7 +76,7 @@ colu.on('connect', function () {
 
     app.post('/encode', function (req, res) {
         if(validateBody(req, res)) {
-            utilEncoder.encodeNumber(req.body.number, function (statusAndResponse) {
+            utilEncoder.encode(req.body.number, function (statusAndResponse) {
                 return sendResponse(res, statusAndResponse)
             })
         }

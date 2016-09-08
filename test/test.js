@@ -7,7 +7,7 @@ const util = require('../util/util.js')
 const alphanumericNotEmptyRegex = /^[a-z0-9]+$/i
 
 describe('Test utilColuFunctions', function () {
-    
+
     var colu
     const utilColuFunctions = util.processRequests.coluCalls
     const validations = util.validations
@@ -70,7 +70,7 @@ describe('Test utilColuFunctions', function () {
         })
     })
     describe('validateNumber', function () {
-        it('should return error 400 saying "<property> should be an integer between <minLimit+1> and <maxLimit -1>" when its not an integer or not in that spectrum', function () {
+        it('should return error 400 saying "<property> should be an integer between <minLimit> and <maxLimit>" when its not an integer or not in that spectrum', function () {
             var key = 'some property'
             var minLimit = 0
             var maxLimit = Math.pow(2, 54) - 2
@@ -289,13 +289,9 @@ describe('Test utilColuFunctions', function () {
     })
     describe('validateIssueAssets', function () {
         var
-            validAsset1 = {amount: 100, assetName: 'yosi'}, validAsset2 = {
-                amount: 100,
-                assetName: 'achi'
-            }, validAsset3 = {
-                amount: 100,
-                assetName: 'avi'
-            }
+            validAsset1 = {amount: 100, assetName: 'yosi'},
+            validAsset2 = {amount: 100, assetName: 'achi'},
+            validAsset3 = {amount: 100, assetName: 'avi'}
         it('should return error 400 if inputAssets is not valid according to "validateArray" or one of the inputAssets is not an object according to "validateObject or has no valid amount according to "validateNumber" or has no valid assetName according to "validateAssetName', function () {
             var inputAssets
             var expectedResponse
@@ -317,14 +313,14 @@ describe('Test utilColuFunctions', function () {
             inputAssets = [validAsset2, {}]
             expectedResponse = {
                 errorCode: validationErrorCode,
-                errorResponse: 'input assets at 1, amount should be an integer between ' + 0 + ' and ' + (Math.pow(2, 54) - 2)
+                errorResponse: 'input assets at 1, amount should be an integer between 1 and ' + (Math.pow(2, 54) - 2)
             }
             observedResponse = validations.validateIssueAssets(inputAssets)
             expect(observedResponse).to.eql(expectedResponse)
             inputAssets = [validAsset2, {ammount: 2}]
             expectedResponse = {
                 errorCode: validationErrorCode,
-                errorResponse: 'input assets at 1, amount should be an integer between ' + 0 + ' and ' + (Math.pow(2, 54) - 2)
+                errorResponse: 'input assets at 1, amount should be an integer between 1 and ' + (Math.pow(2, 54) - 2)
             }
             observedResponse = validations.validateIssueAssets(inputAssets)
             expect(observedResponse).to.eql(expectedResponse)
@@ -341,11 +337,14 @@ describe('Test utilColuFunctions', function () {
             var expectedResponse
             var observedResponse
 
-            inputAssets = [validAsset1, validAsset2, validAsset3, {
-                amount: 100,
-                assetName: 'd',
-                otherProperty: 'something'
-            }]
+            inputAssets = [
+                validAsset1, validAsset2, validAsset3,
+                {
+                    amount: 100,
+                    assetName: 'd',
+                    otherProperty: 'something'
+                }
+            ]
             expectedResponse = [
                 {amount: validAsset1.amount, metadata: {assetName: validAsset1.assetName}},
                 {amount: validAsset2.amount, metadata: {assetName: validAsset2.assetName}},
@@ -433,8 +432,7 @@ describe('Test utilColuFunctions', function () {
         var settings = {
             network: 'testnet',
             events: true,
-            eventsSecure: true,
-            privateSeed: process.env.COLU_SDK_PRIVATE_SEED
+            eventsSecure: true
         }
         colu = new Colu(settings)
         colu.on('connect', done)
@@ -486,7 +484,7 @@ describe('Test utilColuFunctions', function () {
                             })
                             var assetsIdsWithoutDuplicates = Array.from(new Set(assetsIdsWithDuplicates))
                             expect(assetsIdsWithoutDuplicates.length).to.equal(assetsIdsWithDuplicates.length - 1)
-                            assetsIdsWithoutDuplicates.forEach(function(assetIdNoDuplicates){
+                            assetsIdsWithoutDuplicates.forEach(function (assetIdNoDuplicates) {
                                 expect(assetsIdsWithDuplicates).to.include(assetIdNoDuplicates)
                             })
                             utilColuFunctions.getAssets(colu, function (statusAndResponse) {
@@ -511,14 +509,15 @@ describe('Test utilColuFunctions', function () {
             validAssetToIssue4 = {amount: 100, assetName: 'd'},
             validAssetToIssue5 = {amount: 100, assetName: 'e'},
             validAssetToIssue6 = {amount: 100, assetName: 'f'},
-            validAssetToIssue7 = {amount: 100, assetName: 'g'}
+            validAssetToIssue7 = {amount: 100, assetName: 'g'},
+            validAssetToIssue8 = {amount: 100, assetName: 'h'}
         it('should return error if not passing validation', function (done) {
             this.timeout(5000)
             var inputAssets = [validAssetToIssue1, {}]
             utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
                 var expectedResponse = {
                     code: 400,
-                    response: 'input assets at 1, amount should be an integer between 0 and ' + (Math.pow(2, 54) - 2)
+                    response: 'input assets at 1, amount should be an integer between 1 and ' + (Math.pow(2, 54) - 2)
                 }
                 expect(statusAndResponse).to.eql(expectedResponse)
                 done()
@@ -526,21 +525,19 @@ describe('Test utilColuFunctions', function () {
         })
 
         it('should return an array with assetsIds and same order as input and status 200 when all input assets are valid', function (done) {
-            this.timeout(30000);
+            this.timeout(50000);
             var inputAssets = [validAssetToIssue1, validAssetToIssue2, validAssetToIssue3,
-                validAssetToIssue4, validAssetToIssue5, validAssetToIssue6, validAssetToIssue7]
+                validAssetToIssue4, validAssetToIssue5, validAssetToIssue6, validAssetToIssue7, validAssetToIssue8]
             utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
                 expect(statusAndResponse).to.be.a('object');
                 expect(statusAndResponse.code).to.be.equal(200);
                 expect(statusAndResponse.response).to.be.a('array');
-                expect(statusAndResponse.response.length).to.be.equal(5);
+                expect(statusAndResponse.response.length).to.be.equal(8);
                 var finishedGettingAssetData = 0
                 statusAndResponse.response.forEach(function (assetId, index) {
                     colu.coloredCoins.getAssetData({assetId: assetId}, function (err, assetData) {
                         finishedGettingAssetData++
-                        if (!err) {
-                            expect(assetData.assetData[0].metadata.metadataOfIssuence.data.assetName).to.be.equal(inputAssets[index].assetName)
-                        }
+                        expect(assetData.assetData[0].metadata.metadataOfIssuence.data.assetName).to.be.equal(inputAssets[index].assetName)
                         if (finishedGettingAssetData === inputAssets.length) {
                             done()
                         }
@@ -549,17 +546,19 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return an array with errors and assets ids with same order as input along with the first error code when some requests encounter an error', function (done) {
-            this.timeout(40000);
+            this.timeout(50000);
             var inputAssetsReadyForAction = [
                 {metadata: {assetName: 'a'}, amount: 100},
                 {metadata: {assetName: 'b'}, amount: -1},
                 {metadata: {assetName: 'c'}, amount: 200},
-                {metadata: {assetName: 'd'}, amount: 1.2},
-                {metadata: {assetName: 'e'}, amount: 300},
-                {metadata: {assetName: 'f'}, amount: "adsf"},
-                {metadata: {assetName: 'g'}, amount: 400},
-                {metadata: {assetName: 'h'}, amount: true},
-                {metadata: {assetName: 'i'}, amount: 500}
+                {metadata: {assetName: 'd'}, amount: 0},
+                {metadata: {assetName: 'e'}, amount: 200},
+                {metadata: {assetName: 'f'}, amount: Math.pow(2, 54) - 1},
+                {metadata: {assetName: 'g'}, amount: 300},
+                {metadata: {assetName: 'h'}, amount: 1.2},
+                {metadata: {assetName: 'i'}, amount: 300},
+                {metadata: {assetName: 'j'}, amount: undefined},
+                {metadata: {assetName: 'k'}, amount: 300}
             ]
             validations.validateIssueAssets = function () {
                 return inputAssetsReadyForAction
@@ -568,7 +567,7 @@ describe('Test utilColuFunctions', function () {
                 expect(statusAndResponse).to.be.a('object');
                 expect(statusAndResponse.code).to.be.equal(500);
                 expect(statusAndResponse.response).to.be.a('array');
-                expect(statusAndResponse.response.length).to.be.equal(9);
+                expect(statusAndResponse.response.length).to.be.equal(11);
                 var finishedGettingAssetData = 0
                 statusAndResponse.response.forEach(function (responseOfIssuingAsset, index) {
                     if (index % 2 === 0) {
@@ -586,9 +585,27 @@ describe('Test utilColuFunctions', function () {
                             expect(responseOfIssuingAsset.message).to.be.equal('Internal server error')
                             expect(responseOfIssuingAsset.status).to.be.equal(500)
                         }
-                        else {
+                        else if (index === 3) {
+                            var messageParsed = JSON.parse(responseOfIssuingAsset.message)
+                            expect(messageParsed.response).to.be.equal('Check that the utxo is carrying assets')
+                            expect(messageParsed.code).to.be.equal(20005)
+                            expect(messageParsed.name).to.be.equal('MissingIssuanceTxidError')
+                            expect(messageParsed.message).to.be.equal('Missing issuanceTxid for utxo')
+                            expect(responseOfIssuingAsset.status).to.be.equal(500)
+                            expect(responseOfIssuingAsset.statusCode).to.be.equal(500)
+                        }
+                        else if (index === 5) {
+                            expect(responseOfIssuingAsset.message).to.be.equal('Internal server error')
+                            expect(responseOfIssuingAsset.status).to.be.equal(500)
+                        }
+                        else if (index === 7) {
                             expect(responseOfIssuingAsset.message).to.be.equal('Validation error')
                             expect(responseOfIssuingAsset.explanation).to.be.equal('amount is not a type of int32')
+                            expect(responseOfIssuingAsset.status).to.be.equal(400)
+                        }
+                        else if (index === 9) {
+                            expect(responseOfIssuingAsset.message).to.be.equal('Validation error')
+                            expect(responseOfIssuingAsset.explanation).to.be.equal('amount is required')
                             expect(responseOfIssuingAsset.status).to.be.equal(400)
                         }
                     }
@@ -678,8 +695,8 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return success and transfer the amount of the asset from the wallet to the address specified', function (done) {
-            this.timeout(30000)
-            colu.issueAsset({amount: 1}, function (err, asset) {
+            this.timeout(40000)
+            colu.issueAsset({amount: 2}, function (err, asset) {
                 utilColuFunctions.sendAsset(colu, {
                     toAddress: validAssetAddress,
                     assetId: asset.assetId,
@@ -690,16 +707,34 @@ describe('Test utilColuFunctions', function () {
                     expect(statusAndResponse.response).to.be.a('string')
                     expect(alphanumericNotEmptyRegex.test(statusAndResponse.response)).to.be.equal(true)
                     colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
-                        var senderAddressAndAmount = {address: asset.issueAddress, amount: 0}
+                        var senderAddressAndAmount = {address: asset.issueAddress, amount: 1}
                         var receiverAddressAndAmount = {address: validAssetAddress, amount: 1}
+                        expect(assetHolders.holders).to.include.deep(senderAddressAndAmount)
                         expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
-                        done()
+                        expect(assetHolders.holders.length).to.be.equal(2)
+                        utilColuFunctions.sendAsset(colu, {
+                            toAddress: validAssetAddress,
+                            assetId: asset.assetId,
+                            amount: 1
+                        },function(statusAndResponse){
+                            expect(statusAndResponse).to.be.a('object');
+                            expect(statusAndResponse.code).to.be.equal(200);
+                            expect(statusAndResponse.response).to.be.a('string')
+                            expect(alphanumericNotEmptyRegex.test(statusAndResponse.response)).to.be.equal(true)
+                            colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
+                                var receiverAddressAndAmount = {address: validAssetAddress, amount: 2}
+                                expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
+                                expect(assetHolders.holders.length).to.be.equal(1)
+                                done()
+                            })
+                        })
+
                     })
                 })
             })
         })
         it('should return success and transfer the asset from a group of addresses in the wallet if more than one address in the wallet holds this asset and all together they have enough', function (done) {
-            this.timeout(40000)
+            this.timeout(50000)
             colu.issueAsset({amount: 100}, function (err, firstIssuedAsset) {
                 colu.issueAsset({amount: 100}, function (err, secondIssuedAsset) {
                     var assetAddress = secondIssuedAsset.issueAddress
@@ -732,6 +767,7 @@ describe('Test utilColuFunctions', function () {
                                     var assetTransferedCorrectly = JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption1)) > -1 ||
                                         JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption2)) > -1
                                     expect(assetTransferedCorrectly).to.be.true
+                                    expect(secondTimeAssetHolders.holders.length).to.be.equal(2)
                                     done()
                                 })
                             })
@@ -863,43 +899,51 @@ describe('utilEncoder', function () {
             expect(observedHex).to.equal(expectedHex);
         });
     });
-    describe('encodeFullNumber', function () {
+    describe('encodeNumber', function () {
         it('should return hex that is bigger in 2^exponentBits (in hex) than previous when number of bytes is not changing and exponent is 0', function () {
-            var prevEncodedNumber = utilEncoder.encodeFullNumber(991);
+            var prevEncodedNumber = utilEncoder.encodeNumber(991);
             for (var i = 992; i < 2010; i++) {
                 if (i % 10 != 0) {
+                    var currEncodedNumber = utilEncoder.encodeNumber(i);
                     if (i % 10 != 1) {
-                        var currEncodedNumber = utilEncoder.encodeFullNumber(i);
                         expect(parseInt(currEncodedNumber, 16)).to.equal(parseInt(prevEncodedNumber, 16) + Math.pow(2, 4))
                     }
                     else {
-                        var currEncodedNumber = utilEncoder.encodeFullNumber(i);
                         expect(parseInt(currEncodedNumber, 16)).to.equal(parseInt(prevEncodedNumber, 16) + Math.pow(2, 5))
                     }
-                    prevEncodedNumber = utilEncoder.encodeFullNumber(i)
+                    prevEncodedNumber = currEncodedNumber
                 }
             }
-            prevEncodedNumber = utilEncoder.encodeFullNumber(99999999991);
+            prevEncodedNumber = utilEncoder.encodeNumber(99999999991);
             for (var i = 99999999992; i < 100000002010; i++) {
                 if (i % 10 != 0) {
+                    var currEncodedNumber = utilEncoder.encodeNumber(i);
                     if (i % 10 != 1) {
-                        var currEncodedNumber = utilEncoder.encodeFullNumber(i);
                         expect(parseInt(currEncodedNumber, 16)).to.equal(parseInt(prevEncodedNumber, 16) + Math.pow(2, 3))
                     }
                     else {
-                        var currEncodedNumber = utilEncoder.encodeFullNumber(i);
                         expect(parseInt(currEncodedNumber, 16)).to.equal(parseInt(prevEncodedNumber, 16) + Math.pow(2, 4))
                     }
-                    prevEncodedNumber = utilEncoder.encodeFullNumber(i)
+                    prevEncodedNumber = currEncodedNumber
                 }
             }
-        });
+            prevEncodedNumber = utilEncoder.encodeNumber(Number.MAX_SAFE_INTEGER-989);
+            for (var i = Number.MAX_SAFE_INTEGER-988; i < Number.MAX_SAFE_INTEGER; i++) {
+                var currEncodedNumber = utilEncoder.encodeNumber(i);
+                var seperatingIndex = currEncodedNumber.length - 3
+                var secondPartOfCur = currEncodedNumber.substr(seperatingIndex)
+                var secondPartOfPrev = prevEncodedNumber.substr(seperatingIndex)
+                expect((parseInt(secondPartOfPrev, 16) + 1).toString(16)).to.equal(secondPartOfCur)
+                prevEncodedNumber = currEncodedNumber
+            }
+        })
+
         it('should return computed numbers as I manually calculated when number of bytes is changing', function () {
             var numbers = [0, 32, 101, 100001, 10000001, 10000000001, 1000000000001];
             var expectedHexes = ['00', '2200', '400650', '60186a10', '8004c4b408', 'a012a05f2008', 'c000e8d4a51001']
             numbers.forEach(function (number, index) {
                 var expectedHex = expectedHexes[index];
-                var observedHex = utilEncoder.encodeFullNumber(number)
+                var observedHex = utilEncoder.encodeNumber(number)
                 expect(observedHex).to.equal(expectedHex);
             })
         })
@@ -912,7 +956,7 @@ describe('utilEncoder', function () {
             }
             numbers.forEach(function (number, index) {
                 var expectedHex = expectedHexes[index];
-                var observedHex = utilEncoder.encodeFullNumber(number)
+                var observedHex = utilEncoder.encodeNumber(number)
                 expect(observedHex).to.equal(expectedHex);
             })
         })
@@ -926,21 +970,30 @@ describe('utilEncoder', function () {
             }
             numbers.forEach(function (number, index) {
                 var expectedHex = expectedHexes[index];
-                var observedHex = utilEncoder.encodeFullNumber(number)
+                var observedHex = utilEncoder.encodeNumber(number)
                 expect(observedHex).to.equal(expectedHex);
             })
         })
-        it('should return correct result for the examples in the task description and the highest number that can be encoded', function () {
-            var numbers = [1, 1200032, 1232, 1002000000, 928867423145164, 132300400000, Number.MAX_SAFE_INTEGER];
-            var expectedHexes = ['01', '6124fa00', '404d00', '403ea6', 'c34ccccccccccc', '6142ffc5', 'dfffffffffffff'];
+        it('should ignore the exponent and return different encoding which I manually calculated when number of significant digits is higher than 12', function () {
+            var numbers = [1234567890123, 12345678901230, 123456789012300, 1234567890123000]
+            var expectedHexes = ['c0011f71fb04cb', 'c00b3a73ce2fee', 'c07048860ddf4c', 'c462d53c8ab8f8']
             numbers.forEach(function (number, index) {
                 var expectedHex = expectedHexes[index];
-                var observedHex = utilEncoder.encodeFullNumber(number)
+                var observedHex = utilEncoder.encodeNumber(number)
+                expect(observedHex).to.equal(expectedHex);
+            })
+        })
+        it('should return correct result for the examples in the task description and the highest numbers that can be encoded', function () {
+            var numbers = [1, 1200032, 1232, 1002000000, 928867423145164, 132300400000];
+            var expectedHexes = ['01', '6124fa00', '404d00', '403ea6', 'c34ccccccccccc', '6142ffc5'];
+            numbers.forEach(function (number, index) {
+                var expectedHex = expectedHexes[index];
+                var observedHex = utilEncoder.encodeNumber(number)
                 expect(observedHex).to.equal(expectedHex);
             })
         })
     })
-    describe('encodeNumber', function () {
+    describe('encode', function () {
         it('should return error saying "number should be an integer between 0 and (2^53)-1" when its not in that range and pattern of success otherwise', function () {
             var number
             var expectedResponse = {
@@ -948,16 +1001,16 @@ describe('utilEncoder', function () {
                 response: 'number should be an integer between 0 and ' + Number.MAX_SAFE_INTEGER
             }
             number = -1
-            utilEncoder.encodeNumber(number, function (statusAndResponse) {
+            utilEncoder.encode(number, function (statusAndResponse) {
                 expect(statusAndResponse).to.eql(expectedResponse)
             })
 
             number = Number.Max_SAFE_INTEGER + 1
-            utilEncoder.encodeNumber(number, function (statusAndResponse) {
+            utilEncoder.encode(number, function (statusAndResponse) {
                 expect(statusAndResponse).to.eql(expectedResponse)
             })
             var number = 1232
-            utilEncoder.encodeNumber(number, function (statusAndResponse) {
+            utilEncoder.encode(number, function (statusAndResponse) {
                 expect(statusAndResponse).to.eql({code: 200, response: '404d00'})
             })
 
