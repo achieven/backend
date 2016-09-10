@@ -174,9 +174,13 @@ var processRequests = {
                     function (callback) {
                         var localWalletAddresses = new Set()
                         colu.getAssets(function (err, assets) {
-
                             if (err) return callback(err)
+                            var assetIdsInWallet = []
                             if (validations.validateArray(assets)) return callback('Should have from as array of addresses or sendutxo as array of utxos.')
+                            assets.forEach(function(asset){
+                                assetIdsInWallet.push(asset.assetId)
+                            })
+                            if(assetIdsInWallet.indexOf(addressAssetIdAndAmount.assetId) < 0) return callback('Should have from as array of addresses or sendutxo as array of utxos.')
                             assets.forEach(function (asset) {
                                 localWalletAddresses.add(asset.address)
                             })

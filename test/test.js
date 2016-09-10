@@ -439,6 +439,7 @@ describe('Test utilColuFunctions', function () {
         colu.init()
     })
 
+    var issuedAsset1, issuedAsset2
     describe('getAssets', function () {
         it('Should return an empty list of assets when no assets have been issued, with status 200', function (done) {
             this.timeout(5000)
@@ -452,8 +453,10 @@ describe('Test utilColuFunctions', function () {
         })
         it('Should return the list of assets ids when they were issued, with status 200', function (done) {
             this.timeout(20000)
-            colu.issueAsset({amount: 1}, function (err, firstAsset) {
-                colu.issueAsset({amount: 1}, function (err, secondAsset) {
+            colu.issueAsset({amount: 4}, function (err, firstAsset) {
+                colu.issueAsset({amount: 4}, function (err, secondAsset) {
+                    issuedAsset1 = firstAsset
+                    issuedAsset2 = secondAsset
                     utilColuFunctions.getAssets(colu, function (statusAndResponse) {
                         expect(statusAndResponse).to.be.a('object');
                         expect(statusAndResponse.code).to.be.equal(200);
@@ -468,34 +471,30 @@ describe('Test utilColuFunctions', function () {
         })
         it('should return distinct list of assets when colus getAssets function returns duplicate assets', function (done) {
             this.timeout(30000)
-            colu.issueAsset({amount: 2}, function (err, firstAsset) {
-                colu.issueAsset({amount: 2}, function (err, secondAsset) {
-                    var to = [{
-                        address: secondAsset.issueAddress,
-                        assetId: firstAsset.assetId,
-                        amount: 1
-                    }]
-                    var from = [firstAsset.issueAddress]
-                    colu.sendAsset({from: from, to: to}, function (err, sentAsset) {
-                        colu.getAssets(function (err, assets) {
-                            var assetsIdsWithDuplicates = []
-                            assets.forEach(function (asset) {
-                                assetsIdsWithDuplicates.push(asset.assetId)
-                            })
-                            var assetsIdsWithoutDuplicates = Array.from(new Set(assetsIdsWithDuplicates))
-                            expect(assetsIdsWithoutDuplicates.length).to.equal(assetsIdsWithDuplicates.length - 1)
-                            assetsIdsWithoutDuplicates.forEach(function (assetIdNoDuplicates) {
-                                expect(assetsIdsWithDuplicates).to.include(assetIdNoDuplicates)
-                            })
-                            utilColuFunctions.getAssets(colu, function (statusAndResponse) {
-                                var statusAndResponseUnique = Array.from(new Set(statusAndResponse.response))
-                                expect(statusAndResponse).to.be.a('object')
-                                expect(statusAndResponse.code).to.be.equal(200)
-                                expect(statusAndResponse.response).to.be.a('array')
-                                expect(statusAndResponse.response).to.eql(statusAndResponseUnique)
-                                done()
-                            })
-                        })
+            var to = [{
+                address: issuedAsset2.issueAddress,
+                assetId: issuedAsset1.assetId,
+                amount: 2
+            }]
+            var from = [issuedAsset1.issueAddress]
+            colu.sendAsset({from: from, to: to}, function (err, sentAsset) {
+                colu.getAssets(function (err, assets) {
+                    var assetsIdsWithDuplicates = []
+                    assets.forEach(function (asset) {
+                        assetsIdsWithDuplicates.push(asset.assetId)
+                    })
+                    var assetsIdsWithoutDuplicates = Array.from(new Set(assetsIdsWithDuplicates))
+                    expect(assetsIdsWithoutDuplicates.length).to.equal(assetsIdsWithDuplicates.length - 1)
+                    assetsIdsWithoutDuplicates.forEach(function (assetIdNoDuplicates) {
+                        expect(assetsIdsWithDuplicates).to.include(assetIdNoDuplicates)
+                    })
+                    utilColuFunctions.getAssets(colu, function (statusAndResponse) {
+                        var statusAndResponseUnique = Array.from(new Set(statusAndResponse.response))
+                        expect(statusAndResponse).to.be.a('object')
+                        expect(statusAndResponse.code).to.be.equal(200)
+                        expect(statusAndResponse.response).to.be.a('array')
+                        expect(statusAndResponse.response).to.eql(statusAndResponseUnique)
+                        done()
                     })
                 })
             })
@@ -525,7 +524,7 @@ describe('Test utilColuFunctions', function () {
         })
 
         it('should return an array with assetsIds and same order as input and status 200 when all input assets are valid', function (done) {
-            this.timeout(50000);
+            this.timeout(30000);
             var inputAssets = [validAssetToIssue1, validAssetToIssue2, validAssetToIssue3,
                 validAssetToIssue4, validAssetToIssue5, validAssetToIssue6, validAssetToIssue7, validAssetToIssue8]
             utilColuFunctions.issueAssets(colu, inputAssets, function (statusAndResponse) {
@@ -546,7 +545,7 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return an array with errors and assets ids with same order as input along with the first error code when some requests encounter an error', function (done) {
-            this.timeout(50000);
+            this.timeout(30000);
             var inputAssetsReadyForAction = [
                 {metadata: {assetName: 'a'}, amount: 100},
                 {metadata: {assetName: 'b'}, amount: -1},
@@ -572,6 +571,8 @@ describe('Test utilColuFunctions', function () {
                 statusAndResponse.response.forEach(function (responseOfIssuingAsset, index) {
                     if (index % 2 === 0) {
                         colu.coloredCoins.getAssetData({assetId: responseOfIssuingAsset}, function (err, assetData) {
+                            console.log(err, assetData.assetData)
+                            if (err) return done(err)
                             finishedGettingAssetData++
                             expect(assetData.assetData[0].metadata.metadataOfIssuence.data.assetName).to.be.equal(inputAssetsReadyForAction[index].metadata.assetName)
                             if (finishedGettingAssetData === inputAssetsReadyForAction.length) {
@@ -618,7 +619,7 @@ describe('Test utilColuFunctions', function () {
         var validAssetAddress = "moWWfCtKjiaY9EvpPQQw845bb3sHM894Yv"
         var validAssetId = "La5wHsg3dKDP7mrU2visoVDNjSiM6fc45rNsSC"
         it('should return error if not passing validation', function (done) {
-            this.timeout(20000)
+            this.timeout(5000)
             utilColuFunctions.sendAsset(colu, {
                 toAddress: validAssetAddress,
                 assetId: {},
@@ -630,7 +631,7 @@ describe('Test utilColuFunctions', function () {
             })
         })
         it('should return error of "Should have from as array of addresses or sendutxo as array of utxos" if no assets are associated with the wallet', function (done) {
-            this.timeout(20000)
+            this.timeout(10000)
             utilColuFunctions.sendAsset(colu, {
                 toAddress: validAssetAddress,
                 assetId: validAssetId,
@@ -642,140 +643,119 @@ describe('Test utilColuFunctions', function () {
                 expect(statusAndResponse.response).to.be.equal("Should have from as array of addresses or sendutxo as array of utxos.");
                 done()
             })
+
         })
         it('should return error of "Should have from as array of addresses or sendutxo as array of utxos" if there is no one that holds that assetId', function (done) {
-            this.timeout(20000)
-            colu.issueAsset({amount: 1}, function (err, asset) {
-                utilColuFunctions.sendAsset(colu, {
-                    toAddress: validAssetAddress,
-                    assetId: 'noOneHoldsThisAssetIdCauseItDoesntExistPigsWillFlyInTheSkyBeforeThisAssetIdWillExist',
-                    amount: 1
-                }, function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(500);
-                    expect(statusAndResponse.response).to.be.a('string');
-                    expect(statusAndResponse.response).to.be.equal("Should have from as array of addresses or sendutxo as array of utxos.");
-                    done()
-                })
+            this.timeout(10000)
+            utilColuFunctions.sendAsset(colu, {
+                toAddress: validAssetAddress,
+                assetId: 'noOneHoldsThisAssetIdCauseItDoesntExistPigsWillFlyInTheSkyBeforeThisAssetIdWillExist',
+                amount: 1
+            }, function (statusAndResponse) {
+                expect(statusAndResponse).to.be.a('object');
+                expect(statusAndResponse.code).to.be.equal(500);
+                expect(statusAndResponse.response).to.be.a('string');
+                expect(statusAndResponse.response).to.be.equal("Should have from as array of addresses or sendutxo as array of utxos.");
+                done()
             })
         })
         it('should return error of "Not enough assets to cover transfer transaction" if the wallet doesnt have enough of the asset', function (done) {
-            this.timeout(20000)
-            colu.issueAsset({amount: 1}, function (err, asset) {
-                utilColuFunctions.sendAsset(colu, {
-                    toAddress: validAssetAddress,
-                    assetId: asset.assetId,
-                    amount: 2
-                }, function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(500);
-                    expect(statusAndResponse.response.code).to.be.equal(20004);
-                    expect(statusAndResponse.response.status).to.be.equal(500);
-                    expect(statusAndResponse.response.name).to.be.equal('NotEnoughAssetsError')
-                    expect(statusAndResponse.response.message).to.be.equal('Not enough assets to cover transfer transaction')
-                    expect(statusAndResponse.response.asset).to.be.equal(asset.assetId);
-                    done()
-                })
+            this.timeout(10000)
+            utilColuFunctions.sendAsset(colu, {
+                toAddress: validAssetAddress,
+                assetId: issuedAsset1.assetId,
+                amount: 5
+            }, function (statusAndResponse) {
+                expect(statusAndResponse).to.be.a('object');
+                expect(statusAndResponse.code).to.be.equal(500);
+                expect(statusAndResponse.response.code).to.be.equal(20004);
+                expect(statusAndResponse.response.status).to.be.equal(500);
+                expect(statusAndResponse.response.name).to.be.equal('NotEnoughAssetsError')
+                expect(statusAndResponse.response.message).to.be.equal('Not enough assets to cover transfer transaction')
+                expect(statusAndResponse.response.asset).to.be.equal(issuedAsset1.assetId);
+                done()
             })
         })
         it('should return error of "toAddress does not exist" if there is no such address anywhere', function (done) {
-            this.timeout(30000)
-            colu.issueAsset({amount: 1}, function (err, asset) {
-                utilColuFunctions.sendAsset(colu, {
-                    toAddress: 'noOneHoldsThisAddressCauseItDoesntExistPigsWillFlyInTheSkyBeforeThisAddressWillExist',
-                    assetId: asset.assetId,
-                    amount: 1
-                }, function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(500);
-                    expect(statusAndResponse.response.code).to.be.equal(500)
-                    expect(statusAndResponse.response.response).to.be.equal('toAddress does not exist')
-                    done()
-                })
+            this.timeout(10000)
+            utilColuFunctions.sendAsset(colu, {
+                toAddress: 'noOneHoldsThisAddressCauseItDoesntExistPigsWillFlyInTheSkyBeforeThisAddressWillExist',
+                assetId: issuedAsset1.assetId,
+                amount: 1
+            }, function (statusAndResponse) {
+                expect(statusAndResponse).to.be.a('object');
+                expect(statusAndResponse.code).to.be.equal(500);
+                expect(statusAndResponse.response.code).to.be.equal(500)
+                expect(statusAndResponse.response.response).to.be.equal('toAddress does not exist')
+                done()
             })
         })
-        it('should return success and transfer the amount of the asset from the wallet to the address specified', function (done) {
-            this.timeout(40000)
-            colu.issueAsset({amount: 2}, function (err, asset) {
-                utilColuFunctions.sendAsset(colu, {
-                    toAddress: validAssetAddress,
-                    assetId: asset.assetId,
-                    amount: 1
-                }, function (statusAndResponse) {
-                    expect(statusAndResponse).to.be.a('object');
-                    expect(statusAndResponse.code).to.be.equal(200);
-                    expect(statusAndResponse.response).to.be.a('string')
-                    expect(alphanumericNotEmptyRegex.test(statusAndResponse.response)).to.be.equal(true)
-                    colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
-                        var senderAddressAndAmount = {address: asset.issueAddress, amount: 1}
-                        var receiverAddressAndAmount = {address: validAssetAddress, amount: 1}
-                        expect(assetHolders.holders).to.include.deep(senderAddressAndAmount)
-                        expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
-                        expect(assetHolders.holders.length).to.be.equal(2)
-                        utilColuFunctions.sendAsset(colu, {
-                            toAddress: validAssetAddress,
-                            assetId: asset.assetId,
-                            amount: 1
-                        },function(statusAndResponse){
-                            expect(statusAndResponse).to.be.a('object');
-                            expect(statusAndResponse.code).to.be.equal(200);
-                            expect(statusAndResponse.response).to.be.a('string')
-                            expect(alphanumericNotEmptyRegex.test(statusAndResponse.response)).to.be.equal(true)
-                            colu.coloredCoins.getStakeHolders(asset.assetId, function (err, assetHolders) {
-                                var receiverAddressAndAmount = {address: validAssetAddress, amount: 2}
-                                expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
-                                expect(assetHolders.holders.length).to.be.equal(1)
-                                done()
-                            })
+        it('should return success and transfer the amount of the asset from the wallet to the address specified, and clear when the asset amount no longer exists', function (done) {
+            this.timeout(30000)
+            utilColuFunctions.sendAsset(colu, {
+                toAddress: validAssetAddress,
+                assetId: issuedAsset2.assetId,
+                amount: 2
+            }, function (statusAndResponse) {
+                expect(statusAndResponse).to.be.a('object');
+                expect(statusAndResponse.code).to.be.equal(200);
+                expect(statusAndResponse.response).to.be.a('string')
+                expect(alphanumericNotEmptyRegex.test(statusAndResponse.response)).to.be.equal(true)
+                colu.coloredCoins.getStakeHolders(issuedAsset2.assetId, function (err, firstTimeAssetHolders) {
+                    var senderAddressAndAmount = {address: issuedAsset2.issueAddress, amount: 2}
+                    var receiverAddressAndAmount = {address: validAssetAddress, amount: 2}
+                    expect(firstTimeAssetHolders.holders).to.include.deep(senderAddressAndAmount)
+                    expect(firstTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
+                    expect(firstTimeAssetHolders.holders.length).to.be.equal(2)
+                    utilColuFunctions.sendAsset(colu, {
+                        toAddress: validAssetAddress,
+                        assetId: issuedAsset2.assetId,
+                        amount: 2
+                    }, function (statusAndResponse) {
+                        expect(statusAndResponse).to.be.a('object');
+                        expect(statusAndResponse.code).to.be.equal(200);
+                        expect(statusAndResponse.response).to.be.a('string')
+                        expect(alphanumericNotEmptyRegex.test(statusAndResponse.response)).to.be.equal(true)
+                        colu.coloredCoins.getStakeHolders(issuedAsset2.assetId, function (err, secondTimeAssetHolders) {
+                            var receiverAddressAndAmount = {address: validAssetAddress, amount: 4}
+                            expect(secondTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
+                            expect(secondTimeAssetHolders.holders.length).to.be.equal(1)
+                            done()
                         })
-
                     })
+
                 })
             })
         })
         it('should return success and transfer the asset from a group of addresses in the wallet if more than one address in the wallet holds this asset and all together they have enough', function (done) {
-            this.timeout(50000)
-            colu.issueAsset({amount: 100}, function (err, firstIssuedAsset) {
-                colu.issueAsset({amount: 100}, function (err, secondIssuedAsset) {
-                    var assetAddress = secondIssuedAsset.issueAddress
-                    utilColuFunctions.sendAsset(colu, {
-                        toAddress: assetAddress,
-                        assetId: firstIssuedAsset.assetId,
-                        amount: 50
-                    }, function (statusAndResponse) {
-                        colu.coloredCoins.getStakeHolders(firstIssuedAsset.assetId, function (err, firstTimeAssetHolders) {
-                            var senderAddressAndAmount = {address: firstIssuedAsset.issueAddress, amount: 50}
-                            var receiverAddressAndAmount = {address: secondIssuedAsset.issueAddress, amount: 50}
-                            expect(firstTimeAssetHolders.holders).to.include.deep(senderAddressAndAmount)
-                            expect(firstTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
-                            utilColuFunctions.sendAsset(colu, {
-                                toAddress: validAssetAddress,
-                                assetId: firstIssuedAsset.assetId,
-                                amount: 75
-                            }, function (statusAndResponse) {
-                                colu.coloredCoins.getStakeHolders(firstIssuedAsset.assetId, function (err, secondTimeAssetHolders) {
-                                    var senderAddressAndAmountOption1 = {
-                                        address: firstIssuedAsset.issueAddress,
-                                        amount: 25
-                                    }
-                                    var senderAddressAndAmountOption2 = {
-                                        address: secondIssuedAsset.issueAddress,
-                                        amount: 25
-                                    }
-                                    var receiverAddressAndAmount = {address: validAssetAddress, amount: 75}
-                                    expect(secondTimeAssetHolders.holders).to.include.deep(receiverAddressAndAmount)
-                                    var assetTransferedCorrectly = JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption1)) > -1 ||
-                                        JSON.stringify(secondTimeAssetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption2)) > -1
-                                    expect(assetTransferedCorrectly).to.be.true
-                                    expect(secondTimeAssetHolders.holders.length).to.be.equal(2)
-                                    done()
-                                })
-                            })
-                        })
+            this.timeout(30000)
+            colu.getAssets(function (err, assets) {
+                utilColuFunctions.sendAsset(colu, {
+                    toAddress: validAssetAddress,
+                    assetId: issuedAsset1.assetId,
+                    amount: 3
+                }, function (statusAndResponse) {
+                    colu.coloredCoins.getStakeHolders(issuedAsset1.assetId, function (err, assetHolders) {
+                        var senderAddressAndAmountOption1 = {
+                            address: issuedAsset1.issueAddress,
+                            amount: 1
+                        }
+                        var senderAddressAndAmountOption2 = {
+                            address: issuedAsset2.issueAddress,
+                            amount: 1
+                        }
+                        var receiverAddressAndAmount = {address: validAssetAddress, amount: 3}
+                        expect(assetHolders.holders).to.include.deep(receiverAddressAndAmount)
+                        var assetTransferedCorrectly = JSON.stringify(assetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption1)) > -1 ||
+                            JSON.stringify(assetHolders.holders).indexOf(JSON.stringify(senderAddressAndAmountOption2)) > -1
+                        expect(assetTransferedCorrectly).to.be.true
+                        expect(assetHolders.holders.length).to.be.equal(2)
+                        done()
                     })
                 })
             })
         })
+
     })
 })
 
@@ -927,8 +907,8 @@ describe('utilEncoder', function () {
                     prevEncodedNumber = currEncodedNumber
                 }
             }
-            prevEncodedNumber = utilEncoder.encodeNumber(Number.MAX_SAFE_INTEGER-989);
-            for (var i = Number.MAX_SAFE_INTEGER-988; i < Number.MAX_SAFE_INTEGER; i++) {
+            prevEncodedNumber = utilEncoder.encodeNumber(Number.MAX_SAFE_INTEGER - 989);
+            for (var i = Number.MAX_SAFE_INTEGER - 988; i < Number.MAX_SAFE_INTEGER; i++) {
                 var currEncodedNumber = utilEncoder.encodeNumber(i);
                 var seperatingIndex = currEncodedNumber.length - 3
                 var secondPartOfCur = currEncodedNumber.substr(seperatingIndex)
@@ -983,7 +963,7 @@ describe('utilEncoder', function () {
                 expect(observedHex).to.equal(expectedHex);
             })
         })
-        it('should return correct result for the examples in the task description and the highest numbers that can be encoded', function () {
+        it('should return correct result for the examples in the task description', function () {
             var numbers = [1, 1200032, 1232, 1002000000, 928867423145164, 132300400000];
             var expectedHexes = ['01', '6124fa00', '404d00', '403ea6', 'c34ccccccccccc', '6142ffc5'];
             numbers.forEach(function (number, index) {
@@ -1005,7 +985,7 @@ describe('utilEncoder', function () {
                 expect(statusAndResponse).to.eql(expectedResponse)
             })
 
-            number = Number.Max_SAFE_INTEGER + 1
+            number = Number.MAX_SAFE_INTEGER + 1
             utilEncoder.encode(number, function (statusAndResponse) {
                 expect(statusAndResponse).to.eql(expectedResponse)
             })
