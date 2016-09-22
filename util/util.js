@@ -136,11 +136,7 @@ var processRequests = {
                 var issueAndGetAssetMetadata = function (callback) {
                     colu.issueAsset(assetToIssue, function (err, assetObject) {
                         if (err) return callback(err)
-                        colu.coloredCoins.getAssetMetadata(assetObject.assetId, assetObject.txid + ':0', function (err, assetData) {
-                            if (err) return callback(err)
-                            var assetId = assetData.assetId
-                            return callback(null, assetId)
-                        })
+                        return callback(null, assetObject.assetId)
                     })
                 }
                 issueAssetsAndPrepareResponse.push(issueAndGetAssetMetadata)
