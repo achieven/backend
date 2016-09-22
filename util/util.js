@@ -136,11 +136,7 @@ var processRequests = {
                 var issueAndGetAssetMetadata = function (callback) {
                     colu.issueAsset(assetToIssue, function (err, assetObject) {
                         if (err) return callback(err)
-                        colu.coloredCoins.getAssetMetadata(assetObject.assetId, assetObject.txid + ':0', function (err, assetData) {
-                            if (err) return callback(err)
-                            var assetId = assetData.assetId
-                            return callback(null, assetId)
-                        })
+                        return callback(null, assetObject.assetId)
                     })
                 }
                 issueAssetsAndPrepareResponse.push(issueAndGetAssetMetadata)
@@ -174,9 +170,13 @@ var processRequests = {
                     function (callback) {
                         var localWalletAddresses = new Set()
                         colu.getAssets(function (err, assets) {
-
                             if (err) return callback(err)
+                            var assetIdsInWallet = []
                             if (validations.validateArray(assets)) return callback('Should have from as array of addresses or sendutxo as array of utxos.')
+                            assets.forEach(function(asset){
+                                assetIdsInWallet.push(asset.assetId)
+                            })
+                            if(assetIdsInWallet.indexOf(addressAssetIdAndAmount.assetId) < 0) return callback('Should have from as array of addresses or sendutxo as array of utxos.')
                             assets.forEach(function (asset) {
                                 localWalletAddresses.add(asset.address)
                             })
