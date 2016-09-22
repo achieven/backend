@@ -1,3 +1,7 @@
+This is a project mostly backend oriented using node.js, and some small client that numbers can be played with in the code.  
+The server implements some requests using the Colu SDK, using node's "async" library.
+
+
 This project was built with Node v4.4.6
 
 Setup:
